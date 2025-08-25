@@ -11,17 +11,24 @@
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.56.0",
+    "@tanstack/react-query": "^5.85.5",
     "@tiptap/extension-mention": "^3.3.0",
     "@tiptap/extension-placeholder": "^3.3.0",
     "@tiptap/react": "^3.3.0",
     "@tiptap/starter-kit": "^3.3.0",
     "citation-js": "^0.7.20",
+    "class-variance-authority": "^0.7.1",
+    "idb-keyval": "^6.2.2",
     "next": "15.5.0",
     "openai": "^5.15.0",
     "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^5.4.54",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-pdf": "^10.1.0"
+    "react-dropzone": "^14.3.5",
+    "react-pdf": "^10.1.0",
+    "xml2js": "^0.6.2",
+    "zod": "^4.1.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -29,6 +36,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/xml2js": "^0.4.14",
     "eslint": "^9",
     "eslint-config-next": "15.5.0",
     "tailwindcss": "^4",

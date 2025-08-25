@@ -15,7 +15,7 @@ interface Star {
 
 export default function UniverseBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number>(0)
   const mouseRef = useRef({ x: 0, y: 0 })
 
   useEffect(() => {

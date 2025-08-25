@@ -8,6 +8,7 @@ interface SidebarProps {
   onNewSession: () => void
   onSelectSession: (sessionId: string) => void
   currentSessionId?: string
+  user?: any // Add user prop
 }
 
 export default function Sidebar({ 
@@ -15,7 +16,8 @@ export default function Sidebar({
   onToggle, 
   onNewSession, 
   onSelectSession, 
-  currentSessionId 
+  currentSessionId,
+  user 
 }: SidebarProps) {
   const router = useRouter()
   const supabase = createSupabaseBrowser()
@@ -177,11 +179,11 @@ export default function Sidebar({
       <div className="p-6 border-t border-glass-200">
         <div className="flex items-center space-x-4 mb-4">
           <div className="w-10 h-10 bg-gradient-futuristic text-white rounded-2xl flex items-center justify-center text-sm font-bold shadow-neon">
-            M
+            {user?.email?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-white truncate">
-              Mario Fabelo Ozcáriz
+              {user?.email?.split('@')[0] || 'User'}
             </p>
             <p className="text-xs text-glass-300 font-sf-mono tracking-wider">PREMIUM PLAN</p>
           </div>
