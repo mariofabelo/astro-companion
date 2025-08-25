@@ -57,7 +57,7 @@ export default function CanvasNode({ paper, onOpen }: CanvasNodeProps) {
         {/* Source and year badges */}
         <div className="flex gap-2">
           <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-            paper.source === 'arxiv' 
+            paper.source === 'arXiv' 
               ? 'bg-orange-100 text-orange-700'
               : 'bg-blue-100 text-blue-700'
           }`}>

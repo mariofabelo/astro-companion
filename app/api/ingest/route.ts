@@ -6,7 +6,7 @@ import pdf from 'pdf-parse'
 export async function POST(req: NextRequest) {
   try {
     const { paperId } = await req.json()
-    const sb = supabaseServer()
+    const sb = await supabaseServer()
     
     // Fetch paper & download PDF from storage
     const { data: paper } = await sb.from('papers').select('*').eq('id', paperId).single()
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     // Create embeddings for each chunk
     for (const ch of chunks) {
       const emb = await openai.embeddings.create({ 
-        model: 'text-embedding-3-large', 
+        model: 'text-embedding-3-small', 
         input: ch.content 
       })
       const vec = emb.data[0].embedding

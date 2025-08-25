@@ -41,7 +41,7 @@ interface ArxivFeed {
 const Body = z.object({
   query: z.string().min(2),
   maxResults: z.union([z.literal(2), z.literal(5), z.literal(10)]).default(5),
-  sources: z.array(z.enum(["arxiv","ads"])).default(["arxiv"])
+  sources: z.array(z.enum(["arXiv","ads"])).default(["arXiv"])
 });
 
 export async function POST(req: NextRequest) {
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       
       return {
         id: `arxiv:${e.id?.split('/abs/')[1] ?? i}`,
-        source: "arxiv" as const,
+        source: "arXiv" as const,
         title: (e.title || "").replace(/\s+/g," ").trim(),
         authors,
         abstract: (e.summary || "").replace(/\s+/g," ").trim(),

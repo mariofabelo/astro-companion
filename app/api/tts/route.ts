@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const path = `${paperId}.mp3`
     
     // Upload to Supabase storage
-    const sb = supabaseServer()
+    const sb = await supabaseServer()
     await sb.storage.from('audio').upload(path, buf, { 
       upsert: true, 
       contentType: 'audio/mpeg' 

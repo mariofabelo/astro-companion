@@ -64,9 +64,11 @@ export default function MainPage() {
       if (showUserProfilePopup) {
         const popup = document.getElementById('user-profile-popup');
         const profileCard = document.getElementById('user-profile-card');
+        const profileCardCollapsed = document.getElementById('user-profile-card-collapsed');
         
         if (popup && !popup.contains(event.target as Node) && 
-            profileCard && !profileCard.contains(event.target as Node)) {
+            profileCard && !profileCard.contains(event.target as Node) &&
+            profileCardCollapsed && !profileCardCollapsed.contains(event.target as Node)) {
           setShowUserProfilePopup(false);
         }
       }
@@ -136,18 +138,17 @@ export default function MainPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex font-sf">
       {/* Sidebar */}
       <div className={`bg-white/90 backdrop-blur-sm border-r border-slate-200/60 transition-all duration-300 ${
-        sidebarCollapsed ? 'w-16' : 'w-80'
+        sidebarCollapsed ? 'w-24' : 'w-80'
       }`}>
         <div className="p-4">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className={`${sidebarCollapsed ? 'hidden' : 'block'}`}>
               <h1 className="text-2xl font-bold text-slate-900">AstroAI</h1>
-              <p className="text-sm text-slate-600 font-medium">Research Assistant</p>
             </div>
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-2 rounded-lg bg-white/70 border border-slate-200/60 hover:bg-white/90 transition-colors shadow-sm backdrop-blur-sm"
+              className="w-8 h-8 rounded-lg bg-white/70 border border-slate-200/60 hover:bg-white/90 transition-colors shadow-sm backdrop-blur-sm flex items-center justify-center"
             >
               <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -156,26 +157,27 @@ export default function MainPage() {
           </div>
 
           {/* New Space Button */}
-          {!sidebarCollapsed ? (
-            <button
-              onClick={handleNewSpace}
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-3 px-4 rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25"
+          <button
+            onClick={handleNewSpace}
+            className={`bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 flex items-center justify-center shadow-lg shadow-blue-500/25 overflow-hidden h-12 ${
+              sidebarCollapsed 
+                ? 'w-12 rounded-xl mx-auto' 
+                : 'w-full rounded-xl gap-2'
+            }`}
+          >
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span 
+              className={`transition-all duration-300 whitespace-nowrap text-sm ${
+                sidebarCollapsed 
+                  ? 'opacity-0 w-0 overflow-hidden' 
+                  : 'opacity-100 w-auto'
+              }`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>New Space</span>
-            </button>
-          ) : (
-            <button
-              onClick={handleNewSpace}
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-3 px-2 rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 flex items-center justify-center shadow-lg shadow-blue-500/25"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-          )}
+              New Space
+            </span>
+          </button>
 
           {/* Research Spaces */}
           {!sidebarCollapsed && (
@@ -206,7 +208,7 @@ export default function MainPage() {
             <div className="absolute bottom-4 left-4 right-4">
               <div 
                 id="user-profile-card"
-                onClick={() => setShowUserProfilePopup(true)}
+                onClick={() => setShowUserProfilePopup(!showUserProfilePopup)}
                 className="border-t border-slate-200/60 pt-4 cursor-pointer hover:bg-slate-50/50 rounded-lg p-2 transition-colors"
               >
                 <div className="flex items-center gap-3">
@@ -217,6 +219,103 @@ export default function MainPage() {
                     <p className="text-sm font-semibold text-slate-900">{user.email}</p>
                     <p className="text-xs text-blue-600 font-semibold">Pro Plan</p>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Collapsed Profile Icon (Gmail-style) */}
+          {sidebarCollapsed && user && (
+            <div className="absolute bottom-4 left-4 right-4">
+              <div 
+                id="user-profile-card-collapsed"
+                onClick={() => setShowUserProfilePopup(!showUserProfilePopup)}
+                className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105 mx-auto"
+              >
+                {user.email?.charAt(0).toUpperCase() || 'U'}
+              </div>
+            </div>
+          )}
+
+          {/* User Profile Popup */}
+          {showUserProfilePopup && (
+            <div className={`fixed z-50 ${
+              sidebarCollapsed ? 'left-6 bottom-20' : 'left-6 bottom-20'
+            }`} style={{ width: '320px' }}>
+              <div id="user-profile-popup" className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden backdrop-blur-sm w-full">
+                {/* User Info Header */}
+                <div className="p-4 border-b border-slate-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                      {user?.email?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{user?.email}</p>
+                      <p className="text-xs text-blue-600 font-semibold">Pro Plan</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Menu Options */}
+                <div className="py-1">
+                  <button 
+                    className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    onClick={() => {
+                      // Handle manage plan
+                      setShowUserProfilePopup(false);
+                    }}
+                  >
+                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                    Manage Plan
+                  </button>
+                  
+                  <button 
+                    className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    onClick={() => {
+                      // Handle settings
+                      setShowUserProfilePopup(false);
+                    }}
+                  >
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Settings
+                  </button>
+                  
+                  <button 
+                    className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    onClick={() => {
+                      // Handle help
+                      setShowUserProfilePopup(false);
+                    }}
+                  >
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Help
+                  </button>
+                </div>
+
+                {/* Separator */}
+                <div className="border-t border-slate-200"></div>
+
+                {/* Log Out */}
+                <div className="py-1">
+                  <button 
+                    className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    onClick={async () => {
+                      await handleSignOut();
+                      setShowUserProfilePopup(false);
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Log Out
+                  </button>
                 </div>
               </div>
             </div>
@@ -400,87 +499,7 @@ export default function MainPage() {
         </div>
       </div>
 
-      {/* User Profile Popup */}
-      {showUserProfilePopup && !sidebarCollapsed && (
-        <div className="absolute bottom-20 left-6 right-6 z-50 max-w-[280px]">
-          <div id="user-profile-popup" className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden backdrop-blur-sm w-full">
-            {/* User Info Header */}
-            <div className="p-4 border-b border-slate-200">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                  {user?.email?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{user?.email}</p>
-                  <p className="text-xs text-blue-600 font-semibold">Pro Plan</p>
-                </div>
-              </div>
-            </div>
 
-            {/* Menu Options */}
-            <div className="py-1">
-              <button 
-                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                onClick={() => {
-                  // Handle manage plan
-                  setShowUserProfilePopup(false);
-                }}
-              >
-                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                </svg>
-                Manage Plan
-              </button>
-              
-              <button 
-                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                onClick={() => {
-                  // Handle settings
-                  setShowUserProfilePopup(false);
-                }}
-              >
-                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                Settings
-              </button>
-              
-              <button 
-                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                onClick={() => {
-                  // Handle help
-                  setShowUserProfilePopup(false);
-                }}
-              >
-                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Help
-              </button>
-            </div>
-
-            {/* Separator */}
-            <div className="border-t border-slate-200"></div>
-
-            {/* Log Out */}
-            <div className="py-1">
-              <button 
-                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
-                onClick={async () => {
-                  await handleSignOut();
-                  setShowUserProfilePopup(false);
-                }}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                Log Out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

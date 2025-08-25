@@ -5,11 +5,11 @@ import { openai } from '@/lib/openai'
 export async function POST(req: NextRequest) {
   try {
     const { query, paperIds } = await req.json()
-    const sb = supabaseServer()
+    const sb = await supabaseServer()
     
     // Create embedding for the query
     const emb = await openai.embeddings.create({ 
-      model: 'text-embedding-3-large', 
+      model: 'text-embedding-3-small', 
       input: query 
     })
     const vec = emb.data[0].embedding

@@ -17,7 +17,7 @@ export async function queryRAG(
     
     // Create embedding for the query
     const emb = await openai.embeddings.create({ 
-      model: 'text-embedding-3-large', 
+      model: 'text-embedding-3-small', 
       input: query 
     })
     const vec = emb.data[0].embedding

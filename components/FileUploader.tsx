@@ -75,10 +75,10 @@ export default function FileUploader({ onFilesUploaded }: FileUploaderProps) {
           </div>
           
           <div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-xl font-semibold text-gray-900 mb-1">
               {isDragActive ? 'Drop your PDFs here' : 'Upload Research Papers'}
             </h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 mb-3">
               Drag and drop your PDF files here, or click to browse
             </p>
             <p className="text-sm text-gray-500">

@@ -34,7 +34,7 @@ export default function ResultCard({ paper, isSelected, onToggleSelect }: Result
           <div className="flex flex-wrap gap-2">
             {/* Source badge */}
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              paper.source === 'arxiv' 
+              paper.source === 'arXiv' 
                 ? 'bg-orange-100 text-orange-700'
                 : 'bg-blue-100 text-blue-700'
             }`}>

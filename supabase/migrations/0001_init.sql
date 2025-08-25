@@ -36,7 +36,7 @@ create table if not exists chunks (
   paper_id uuid not null references papers(id) on delete cascade,
   chunk_index int not null,
   content text not null,
-  embedding vector(3072),
+  embedding vector(1536),
   tokens int,
   created_at timestamptz default now()
 );
@@ -115,7 +115,7 @@ create policy "media owner full" on media for all using (owner = auth.uid()) wit
 
 -- Function for matching chunks
 create or replace function match_chunks(
-  query_embedding vector(3072),
+  query_embedding vector(1536),
   paper_ids uuid[] default null,
   match_count int default 12
 ) returns table (
