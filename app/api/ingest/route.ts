@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/server/db'
+import { supabaseServer } from '@/lib/db'
 import { openai } from '@/lib/openai'
 import pdf from 'pdf-parse'
 

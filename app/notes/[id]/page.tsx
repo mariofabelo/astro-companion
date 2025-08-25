@@ -1,8 +1,14 @@
 import TipTapEditor from '@/components/TipTapEditor/Editor'
+import UniverseBackground from '@/components/UniverseBackground'
 
 export default function NotePage({ params }: { params: { id: string } }) {
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Dynamic Universe Background */}
+      <UniverseBackground />
+      
+      <div className="relative z-10 p-8">
+        <div className="space-y-6">
       <div className="bg-white p-6 rounded-lg shadow">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Note Title</h1>
@@ -23,6 +29,8 @@ export default function NotePage({ params }: { params: { id: string } }) {
             // TODO: Save to database
           }}
         />
+      </div>
+        </div>
       </div>
     </div>
   )

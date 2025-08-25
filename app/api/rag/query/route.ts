@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/server/db'
+import { supabaseServer } from '@/lib/db'
 import { openai } from '@/lib/openai'
 
 export async function POST(req: NextRequest) {
