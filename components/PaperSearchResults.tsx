@@ -3,14 +3,7 @@
 import { useState } from 'react';
 import { Paper, Source } from '@/types/paper';
 import { useMutation } from '@tanstack/react-query';
-
-interface ResearchSpace {
-  id: string;
-  title: string;
-  description: string;
-  timestamp: string;
-  papers: Paper[];
-}
+import { ResearchSpace } from '@/lib/research-spaces';
 
 interface PaperSearchResultsProps {
   searchResults: Paper[];

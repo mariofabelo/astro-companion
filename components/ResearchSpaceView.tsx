@@ -2,17 +2,10 @@
 
 import { useState } from 'react';
 import { Paper } from '@/types/paper';
+import { ResearchSpace } from '@/lib/research-spaces';
 import PaperCanvas from './PaperCanvas';
 import PaperIdentificationPanel from './PaperIdentificationPanel';
 import PDFPopupViewer from './PDFPopupViewer';
-
-interface ResearchSpace {
-  id: string;
-  title: string;
-  description: string;
-  timestamp: string;
-  papers: Paper[];
-}
 
 interface ResearchSpaceViewProps {
   space: ResearchSpace;
