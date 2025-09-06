@@ -4,17 +4,17 @@ import { useState } from 'react';
 import { Source } from '@/types/paper';
 
 interface SearchBarProps {
-  onSearch: (query: string, maxResults: 2 | 5 | 10, sources: Source[]) => void;
+  onSearch: (query: string, maxResults: 2 | 3 | 5 | 10, sources: Source[]) => void;
   isLoading?: boolean;
 }
 
 export default function SearchBar({ onSearch, isLoading = false }: SearchBarProps) {
   const [query, setQuery] = useState('');
-  const [maxResults, setMaxResults] = useState<2 | 5 | 10>(5);
+  const [maxResults, setMaxResults] = useState<2 | 3 | 5 | 10>(5);
   const [sources, setSources] = useState<Source[]>(['arXiv']);
   const [showCountSelector, setShowCountSelector] = useState(false);
 
-  const enableAds = process.env.NEXT_PUBLIC_ENABLE_ADS === 'true';
+  const enableAds = true; // ADS integration is now implemented
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,10 +78,9 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
-                title={!enableAds ? 'Coming soon' : 'Search ADS'}
+                title="Search ADS (Astrophysics Data System)"
               >
                 ADS
-                {!enableAds && <span className="ml-1 text-xs">(soon)</span>}
               </button>
             </div>
           </div>
@@ -102,12 +101,12 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
             {showCountSelector && (
               <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                 <div className="p-2 space-y-1">
-                  {[2, 5, 10].map((count) => (
+                  {[2, 3, 5, 10].map((count) => (
                     <button
                       key={count}
                       type="button"
                       onClick={() => {
-                        setMaxResults(count as 2 | 5 | 10);
+                        setMaxResults(count as 2 | 3 | 5 | 10);
                         setShowCountSelector(false);
                       }}
                       className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${

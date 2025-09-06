@@ -19,7 +19,7 @@ export type Paper = {
 
 export type SearchRequest = {
   query: string;
-  maxResults: 2 | 5 | 10;
+  maxResults: 2 | 3 | 5 | 10;
   sources: Source[];
 };
 

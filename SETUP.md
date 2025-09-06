@@ -13,9 +13,22 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
 # OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key_here
 
+# ADS (Astrophysics Data System) Configuration
+ADS_API_TOKEN=your_ads_api_token_here
+NEXT_PUBLIC_ENABLE_ADS=true
+
 # App Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
+
+## ADS API Setup
+
+1. **Get ADS API Token:**
+   - Go to [ADS (Astrophysics Data System)](https://ui.adsabs.harvard.edu/)
+   - Create an account and log in
+   - Go to your user profile settings
+   - Click "Generate a new key" to create an API token
+   - Copy the token and add it to your `.env.local` file as `ADS_API_TOKEN`
 
 ## Google OAuth Setup
 
@@ -56,6 +69,9 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - ✅ Error handling for auth failures
 - ✅ Responsive login page with Google button
 - ✅ Modern UI with Tailwind CSS
+- ✅ Paper search with arXiv integration
+- ✅ Paper search with ADS (Astrophysics Data System) integration
+- ✅ Multi-source paper search (arXiv + ADS)
 
 ## Next Steps
 

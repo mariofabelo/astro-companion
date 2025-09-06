@@ -18,9 +18,9 @@ interface ChatLLMInterfaceProps {
   externalInput?: string;
   onInputProcessed?: () => void;
   selectedSources: Source[];
-  maxResults: 2 | 5 | 10;
+  maxResults: 2 | 3 | 5 | 10;
   onSourceToggle: (source: Source) => void;
-  onMaxResultsChange: (maxResults: 2 | 5 | 10) => void;
+  onMaxResultsChange: (maxResults: 2 | 3 | 5 | 10) => void;
   showSourceDropdown: boolean;
   showResultsDropdown: boolean;
   onShowSourceDropdownToggle: () => void;
@@ -28,7 +28,7 @@ interface ChatLLMInterfaceProps {
 }
 
 // API function for search
-const searchPapers = async (query: string, maxResults: 2 | 5 | 10, sources: Source[]) => {
+const searchPapers = async (query: string, maxResults: 2 | 3 | 5 | 10, sources: Source[]) => {
   const response = await fetch('/api/search', {
     method: 'POST',
     headers: {
@@ -92,7 +92,7 @@ export default function ChatLLMInterface({
 
   // Search mutation
   const searchMutation = useMutation({
-    mutationFn: ({ query, maxResults, sources }: { query: string; maxResults: 2 | 5 | 10; sources: Source[] }) =>
+    mutationFn: ({ query, maxResults, sources }: { query: string; maxResults: 2 | 3 | 5 | 10; sources: Source[] }) =>
       searchPapers(query, maxResults, sources),
     onSuccess: (data) => {
       setSearchResults(data.papers);

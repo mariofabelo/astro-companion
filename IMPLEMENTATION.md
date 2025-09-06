@@ -77,7 +77,7 @@ astro-companion/
 Create a `.env.local` file with:
 
 ```env
-NEXT_PUBLIC_ENABLE_ADS=false
+NEXT_PUBLIC_ENABLE_ADS=true
 ```
 
 ## Getting Started
@@ -89,7 +89,7 @@ NEXT_PUBLIC_ENABLE_ADS=false
 
 2. Set up environment variables:
    ```bash
-   echo "NEXT_PUBLIC_ENABLE_ADS=false" > .env.local
+   echo "NEXT_PUBLIC_ENABLE_ADS=true" > .env.local
    ```
 
 3. Start development server:

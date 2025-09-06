@@ -10,7 +10,7 @@ import SessionCanvas from '@/components/SessionCanvas';
 import PdfPopover from '@/components/PdfPopover';
 
 // API function
-const searchPapers = async (query: string, maxResults: 2 | 5 | 10, sources: Source[]) => {
+const searchPapers = async (query: string, maxResults: 2 | 3 | 5 | 10, sources: Source[]) => {
   const response = await fetch('/api/search', {
     method: 'POST',
     headers: {
@@ -51,7 +51,7 @@ export default function AstroApp() {
 
   // Search mutation
   const searchMutation = useMutation({
-    mutationFn: ({ query, maxResults, sources }: { query: string; maxResults: 2 | 5 | 10; sources: Source[] }) =>
+    mutationFn: ({ query, maxResults, sources }: { query: string; maxResults: 2 | 3 | 5 | 10; sources: Source[] }) =>
       searchPapers(query, maxResults, sources),
     onSuccess: (data) => {
       setSearchResults(data.papers);
@@ -63,7 +63,7 @@ export default function AstroApp() {
     },
   });
 
-  const handleSearch = (query: string, maxResults: 2 | 5 | 10, sources: Source[]) => {
+  const handleSearch = (query: string, maxResults: 2 | 3 | 5 | 10, sources: Source[]) => {
     searchMutation.mutate({ query, maxResults, sources });
   };
 
