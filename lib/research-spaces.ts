@@ -39,7 +39,9 @@ export class ResearchSpacesService {
       return [];
     }
 
-    return data.map(space => ({
+    console.log('Fetched spaces from database:', data);
+
+    const result = data.map(space => ({
       id: space.id,
       title: space.title,
       description: space.description,
@@ -48,11 +50,16 @@ export class ResearchSpacesService {
       created_at: space.created_at,
       updated_at: space.updated_at
     }));
+
+    console.log('Processed spaces:', result);
+    return result;
   }
 
   async createSpace(title: string, description: string, papers: Paper[] = []): Promise<ResearchSpace | null> {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) return null;
+
+    console.log('Creating space in database:', { title, description, papersCount: papers.length, papers });
 
     const { data, error } = await this.supabase
       .from('research_spaces')
@@ -70,7 +77,9 @@ export class ResearchSpacesService {
       return null;
     }
 
-    return {
+    console.log('Database returned:', data);
+
+    const result = {
       id: data.id,
       title: data.title,
       description: data.description,
@@ -79,6 +88,9 @@ export class ResearchSpacesService {
       created_at: data.created_at,
       updated_at: data.updated_at
     };
+
+    console.log('Returning space:', result);
+    return result;
   }
 
   async updateSpace(id: string, updates: Partial<{ title: string; description: string; papers: Paper[] }>): Promise<ResearchSpace | null> {

@@ -89,3 +89,4 @@ To use this feature, you need to run the database migration:
 - Space templates
 - Export/import functionality
 - Space categories or tags
+

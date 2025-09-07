@@ -142,42 +142,82 @@ export default function MainPage() {
     setViewMode('space');
   };
 
-  const handleAddToSpace = (papers: Paper[], spaceId: string) => {
-    const updatedSpaces = researchSpaces.map(space => {
-      if (space.id === spaceId) {
-        const newPapers = papers.filter(paper => 
-          !space.papers.some(p => p.id === paper.id)
-        );
-        return {
-          ...space,
-          papers: [...space.papers, ...newPapers]
-        };
-      }
-      return space;
-    });
-    setResearchSpaces(updatedSpaces);
-    
-    // Update current space if it's the one being modified
-    if (currentSpace?.id === spaceId) {
-      const updatedSpace = updatedSpaces.find(s => s.id === spaceId);
+  const handleAddToSpace = async (papers: Paper[], spaceId: string) => {
+    try {
+      // Find the space to update
+      const spaceToUpdate = researchSpaces.find(space => space.id === spaceId);
+      if (!spaceToUpdate) return;
+
+      // Filter out papers that are already in the space
+      const newPapers = papers.filter(paper => 
+        !spaceToUpdate.papers.some(p => p.id === paper.id)
+      );
+
+      if (newPapers.length === 0) return; // No new papers to add
+
+      // Update the space in the database
+      const updatedSpace = await researchSpacesService.updateSpace(spaceId, {
+        papers: [...spaceToUpdate.papers, ...newPapers]
+      });
+
       if (updatedSpace) {
-        setCurrentSpace(updatedSpace);
+        // Update local state
+        const updatedSpaces = researchSpaces.map(space => 
+          space.id === spaceId ? updatedSpace : space
+        );
+        setResearchSpaces(updatedSpaces);
+        
+        // Update current space if it's the one being modified
+        if (currentSpace?.id === spaceId) {
+          setCurrentSpace(updatedSpace);
+        }
+      }
+    } catch (error) {
+      console.error('Error adding papers to space:', error);
+      // Fallback to local update if database fails
+      const updatedSpaces = researchSpaces.map(space => {
+        if (space.id === spaceId) {
+          const newPapers = papers.filter(paper => 
+            !space.papers.some(p => p.id === paper.id)
+          );
+          return {
+            ...space,
+            papers: [...space.papers, ...newPapers]
+          };
+        }
+        return space;
+      });
+      setResearchSpaces(updatedSpaces);
+      
+      // Update current space if it's the one being modified
+      if (currentSpace?.id === spaceId) {
+        const updatedSpace = updatedSpaces.find(s => s.id === spaceId);
+        if (updatedSpace) {
+          setCurrentSpace(updatedSpace);
+        }
       }
     }
   };
 
   const handleCreateNewSpace = async (papers: Paper[], spaceTitle: string) => {
     try {
+      console.log('Creating new space with papers:', { spaceTitle, papersCount: papers.length, papers });
+      
       const newSpace = await researchSpacesService.createSpace(
         spaceTitle,
         `Research space with ${papers.length} paper${papers.length !== 1 ? 's' : ''}`,
         papers
       );
       
+      console.log('Created space from database:', newSpace);
+      
       if (newSpace) {
         setResearchSpaces(prev => [newSpace, ...prev]);
         setCurrentSpace(newSpace);
         setViewMode('space');
+        console.log('Updated state with new space:', newSpace);
+      } else {
+        console.error('Failed to create space - newSpace is null');
       }
     } catch (error) {
       console.error('Error creating new space:', error);
@@ -189,17 +229,43 @@ export default function MainPage() {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         papers: papers
       };
+      console.log('Using fallback space:', fallbackSpace);
       setResearchSpaces(prev => [fallbackSpace, ...prev]);
       setCurrentSpace(fallbackSpace);
       setViewMode('space');
     }
   };
 
-  const handleUpdateSpace = (updatedSpace: ResearchSpace) => {
-    setResearchSpaces(prev => 
-      prev.map(s => s.id === updatedSpace.id ? updatedSpace : s)
-    );
-    setCurrentSpace(updatedSpace);
+  const handleUpdateSpace = async (updatedSpace: ResearchSpace) => {
+    try {
+      // Update the space in the database
+      const dbUpdatedSpace = await researchSpacesService.updateSpace(updatedSpace.id, {
+        title: updatedSpace.title,
+        description: updatedSpace.description,
+        papers: updatedSpace.papers
+      });
+
+      if (dbUpdatedSpace) {
+        // Update local state with the database result
+        setResearchSpaces(prev => 
+          prev.map(s => s.id === updatedSpace.id ? dbUpdatedSpace : s)
+        );
+        setCurrentSpace(dbUpdatedSpace);
+      } else {
+        // Fallback to local update if database fails
+        setResearchSpaces(prev => 
+          prev.map(s => s.id === updatedSpace.id ? updatedSpace : s)
+        );
+        setCurrentSpace(updatedSpace);
+      }
+    } catch (error) {
+      console.error('Error updating space:', error);
+      // Fallback to local update if database fails
+      setResearchSpaces(prev => 
+        prev.map(s => s.id === updatedSpace.id ? updatedSpace : s)
+      );
+      setCurrentSpace(updatedSpace);
+    }
   };
 
   const handleBackToMain = () => {
@@ -546,11 +612,13 @@ export default function MainPage() {
 
       {/* Main Content */}
       {viewMode === 'space' && currentSpace ? (
-        <ResearchSpaceView
-          space={currentSpace}
-          onBack={handleBackToMain}
-          onUpdateSpace={handleUpdateSpace}
-        />
+        <div className="flex-1 w-full">
+          <ResearchSpaceView
+            space={currentSpace}
+            onBack={handleBackToMain}
+            onUpdateSpace={handleUpdateSpace}
+          />
+        </div>
       ) : (
         <div className="flex-1 flex items-center justify-center p-2">
           <div className="w-full max-w-4xl">

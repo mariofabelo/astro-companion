@@ -31,37 +31,74 @@ export default function PaperCanvas({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState(0.6); // Start with a smaller scale to prevent jump
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
+
   // Initialize paper nodes when papers change
   useEffect(() => {
+    if (!papers || papers.length === 0) {
+      setNodes([]);
+      return;
+    }
+    
     const newNodes: PaperNode[] = papers.map((paper, index) => {
-      // Check if node already exists
-      const existingNode = nodes.find(n => n.paper.id === paper.id);
-      if (existingNode) {
-        return existingNode;
-      }
-
-      // Create new node with random position
+      // Create new node with better spacing and sizing
       const cols = Math.ceil(Math.sqrt(papers.length));
       const row = Math.floor(index / cols);
       const col = index % cols;
       
+      // Better spacing and sizing for the available space
+      const cardWidth = 320;
+      const cardHeight = 420;
+      const spacingX = 50;
+      const spacingY = 50;
+      const startX = 50;
+      const startY = 50;
+      
       return {
         id: paper.id,
         paper,
-        x: col * 300 + 100,
-        y: row * 400 + 100,
-        width: 280,
-        height: 360,
+        x: startX + col * (cardWidth + spacingX),
+        y: startY + row * (cardHeight + spacingY),
+        width: cardWidth,
+        height: cardHeight,
         isSelected: selectedPaper?.id === paper.id
       };
     });
 
     setNodes(newNodes);
-  }, [papers]);
+    
+    // Only auto-fit to view if this is the first time papers are loaded (nodes.length === 0)
+    // This prevents the jump when switching from Grid to Canvas view
+    if (newNodes.length > 0 && nodes.length === 0) {
+      setTimeout(() => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const canvasRect = canvas.getBoundingClientRect();
+          const minX = Math.min(...newNodes.map(n => n.x));
+          const maxX = Math.max(...newNodes.map(n => n.x + n.width));
+          const minY = Math.min(...newNodes.map(n => n.y));
+          const maxY = Math.max(...newNodes.map(n => n.y + n.height));
+
+          const contentWidth = maxX - minX;
+          const contentHeight = maxY - minY;
+          const padding = 80;
+
+          const scaleX = (canvasRect.width - padding * 2) / contentWidth;
+          const scaleY = (canvasRect.height - padding * 2) / contentHeight;
+          const newScale = Math.min(scaleX, scaleY, 1.2);
+
+          setScale(newScale);
+          setCanvasOffset({
+            x: (canvasRect.width - contentWidth * newScale) / 2 - minX * newScale,
+            y: (canvasRect.height - contentHeight * newScale) / 2 - minY * newScale
+          });
+        }
+      }, 100);
+    }
+  }, [papers, selectedPaper, nodes.length]);
 
   // Update selected state when selectedPaper changes
   useEffect(() => {
@@ -155,11 +192,11 @@ export default function PaperCanvas({
 
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
-    const padding = 50;
+    const padding = 80; // Increased padding for better spacing
 
     const scaleX = (canvasRect.width - padding * 2) / contentWidth;
     const scaleY = (canvasRect.height - padding * 2) / contentHeight;
-    const newScale = Math.min(scaleX, scaleY, 1);
+    const newScale = Math.min(scaleX, scaleY, 1.2); // Allow slight zoom in
 
     setScale(newScale);
     setCanvasOffset({
@@ -169,7 +206,14 @@ export default function PaperCanvas({
   }, [nodes]);
 
   return (
-    <div className="relative w-full h-full bg-slate-50 overflow-hidden">
+    <div className="relative w-full h-full bg-slate-50 overflow-hidden" style={{ minHeight: '400px', width: '100%' }}>
+      {/* Debug info */}
+      <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg p-3 text-sm">
+        <div>Papers: {papers.length}</div>
+        <div>Nodes: {nodes.length}</div>
+        <div>Scale: {Math.round(scale * 100)}%</div>
+        <div>Offset: {canvasOffset.x}, {canvasOffset.y}</div>
+      </div>
       {/* Canvas Controls */}
       <div className="absolute top-4 right-4 z-10 flex gap-2">
         <button
@@ -207,25 +251,55 @@ export default function PaperCanvas({
         style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
       >
         <div
-          className="relative"
+          className="relative transition-transform duration-300 ease-out"
           style={{
             transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${scale})`,
-            transformOrigin: '0 0'
+            transformOrigin: '0 0',
+            minWidth: '100%',
+            minHeight: '100%'
           }}
         >
+          {/* Test rectangle */}
+          <div
+            className="absolute border-2 border-red-500 bg-red-100 rounded-lg"
+            style={{
+              left: 50,
+              top: 50,
+              width: 200,
+              height: 100
+            }}
+          >
+            <div className="p-2 text-xs text-red-700">Test Canvas</div>
+          </div>
+          
+          {/* Fallback: Show paper titles if nodes aren't rendering */}
+          {nodes.length === 0 && papers.length > 0 && (
+            <div className="absolute top-20 left-4 bg-yellow-100 border-2 border-yellow-500 rounded-lg p-4">
+              <h3 className="font-bold text-yellow-800">Papers found but no nodes created:</h3>
+              {papers.map((paper, index) => (
+                <div key={paper.id} className="text-yellow-700 text-sm">
+                  {index + 1}. {paper.title}
+                </div>
+              ))}
+            </div>
+          )}
+          
           {nodes.map((node) => (
             <div
               key={node.id}
-              className={`absolute border-2 rounded-xl shadow-lg transition-all duration-200 cursor-pointer ${
+              className={`absolute border-4 rounded-xl shadow-lg transition-all duration-200 cursor-pointer ${
                 node.isSelected
-                  ? 'border-blue-500 shadow-blue-200/50'
-                  : 'border-slate-200 hover:border-slate-300'
+                  ? 'border-blue-500 shadow-blue-200/50 bg-blue-50'
+                  : 'border-green-500 bg-green-50 hover:border-green-600'
               }`}
               style={{
                 left: node.x,
                 top: node.y,
                 width: node.width,
-                height: node.height
+                height: node.height,
+                zIndex: 10,
+                backgroundColor: '#dcfce7', // Force green background
+                border: '4px solid #16a34a' // Force green border
               }}
               onMouseDown={(e) => handleMouseDown(e, node.id)}
               onClick={(e) => handleNodeClick(e, node.paper)}

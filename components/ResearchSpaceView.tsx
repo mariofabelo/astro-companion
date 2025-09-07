@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Paper } from '@/types/paper';
 import { ResearchSpace } from '@/lib/research-spaces';
 import PaperCanvas from './PaperCanvas';
+import PaperGrid from './PaperGrid';
 import PaperIdentificationPanel from './PaperIdentificationPanel';
 import PDFPopupViewer from './PDFPopupViewer';
 
@@ -22,6 +23,9 @@ export default function ResearchSpaceView({
   const [showIdentificationPanel, setShowIdentificationPanel] = useState(false);
   const [showPDFViewer, setShowPDFViewer] = useState(false);
   const [pdfPaper, setPdfPaper] = useState<Paper | null>(null);
+  const [viewMode, setViewMode] = useState<'canvas' | 'grid'>('grid');
+
+
 
   const handlePaperClick = (paper: Paper) => {
     setSelectedPaper(paper);
@@ -66,10 +70,10 @@ export default function ResearchSpaceView({
   };
 
   return (
-    <div className="h-full flex flex-col bg-slate-50">
+    <div className="h-full flex flex-col bg-slate-50 w-full">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 p-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-white border-b border-slate-200 p-4 w-full">
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-4">
             <button
               onClick={onBack}
@@ -86,6 +90,36 @@ export default function ResearchSpaceView({
           </div>
           
           <div className="flex items-center gap-4">
+            {/* View Toggle */}
+            <div className="flex items-center bg-slate-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('grid')}
+                disabled={space.papers.length === 0}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'grid'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : space.papers.length === 0
+                    ? 'text-slate-400 cursor-not-allowed'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Grid
+              </button>
+              <button
+                onClick={() => setViewMode('canvas')}
+                disabled={space.papers.length === 0}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'canvas'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : space.papers.length === 0
+                    ? 'text-slate-400 cursor-not-allowed'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Canvas
+              </button>
+            </div>
+            
             <div className="text-sm text-slate-600">
               {space.papers.length} paper{space.papers.length !== 1 ? 's' : ''}
             </div>
@@ -97,18 +131,28 @@ export default function ResearchSpaceView({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Paper Canvas */}
-        <div className={`flex-1 transition-all duration-300 ${
-          showIdentificationPanel ? 'mr-80' : ''
-        }`}>
+      <div className="flex-1 flex overflow-hidden w-full">
+        {/* Paper Display */}
+        <div className="flex-1 transition-all duration-300 w-full">
           {space.papers.length > 0 ? (
-            <PaperCanvas
-              papers={space.papers}
-              onPaperClick={handlePaperClick}
-              onPaperSelect={handlePaperSelect}
-              selectedPaper={selectedPaper}
-            />
+            viewMode === 'grid' ? (
+              <>
+                {console.log('ResearchSpaceView: Rendering PaperGrid')}
+                <PaperGrid
+                  papers={space.papers}
+                  onPaperClick={handlePaperClick}
+                  onPaperSelect={handlePaperSelect}
+                  selectedPaper={selectedPaper || undefined}
+                />
+              </>
+            ) : (
+              <PaperCanvas
+                papers={space.papers}
+                onPaperClick={handlePaperClick}
+                onPaperSelect={handlePaperSelect}
+                selectedPaper={selectedPaper || undefined}
+              />
+            )
           ) : (
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
@@ -124,7 +168,7 @@ export default function ResearchSpaceView({
 
         {/* Paper Identification Panel */}
         {showIdentificationPanel && selectedPaper && (
-          <div className="absolute right-0 top-0 h-full z-10">
+          <div className="absolute right-0 top-0 h-full w-80 z-10">
             <PaperIdentificationPanel
               paper={selectedPaper}
               onOpenPDF={handleOpenPDF}
