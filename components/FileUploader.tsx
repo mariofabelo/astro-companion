@@ -10,6 +10,10 @@ interface FileUploaderProps {
 export default function FileUploader({ onFilesUploaded }: FileUploaderProps) {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [linkInput, setLinkInput] = useState('');
+  const [isProcessingLink, setIsProcessingLink] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [linkSuccess, setLinkSuccess] = useState<string | null>(null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const pdfFiles = acceptedFiles.filter(file => file.type === 'application/pdf');
@@ -52,6 +56,89 @@ export default function FileUploader({ onFilesUploaded }: FileUploaderProps) {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const validateLink = (url: string): { isValid: boolean; type: 'arxiv' | 'ads' | 'unknown' } => {
+    // ArXiv URL patterns
+    const arxivPatterns = [
+      /^https?:\/\/arxiv\.org\/abs\/(\d{4}\.\d{4,}(v\d+)?)$/,
+      /^https?:\/\/arxiv\.org\/pdf\/(\d{4}\.\d{4,}(v\d+)?)\.pdf$/,
+      /^(\d{4}\.\d{4,}(v\d+)?)$/ // Just the ID
+    ];
+
+    // ADS URL patterns
+    const adsPatterns = [
+      /^https?:\/\/ui\.adsabs\.harvard\.edu\/abs\/([^\/]+)/,
+      /^https?:\/\/adsabs\.harvard\.edu\/abs\/([^\/]+)/,
+      /^([A-Za-z0-9\.]+)$/ // Just the bibcode
+    ];
+
+    for (const pattern of arxivPatterns) {
+      if (pattern.test(url)) {
+        return { isValid: true, type: 'arxiv' };
+      }
+    }
+
+    for (const pattern of adsPatterns) {
+      if (pattern.test(url)) {
+        return { isValid: true, type: 'ads' };
+      }
+    }
+
+    return { isValid: false, type: 'unknown' };
+  };
+
+  const processLink = async () => {
+    if (!linkInput.trim()) return;
+
+    // Clear previous messages
+    setLinkError(null);
+    setLinkSuccess(null);
+
+    const validation = validateLink(linkInput.trim());
+    if (!validation.isValid) {
+      setLinkError('Please enter a valid ArXiv or ADS link');
+      return;
+    }
+
+    setIsProcessingLink(true);
+    try {
+      const response = await fetch('/api/process-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: linkInput.trim(),
+          type: validation.type
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to process link');
+      }
+
+      const result = await response.json();
+      console.log('Link processed successfully:', result);
+      
+      // Show success message
+      setLinkSuccess(`Paper "${result.paper?.title || 'Unknown'}" has been added to your library!`);
+      
+      // Clear the input after a delay
+      setTimeout(() => {
+        setLinkInput('');
+        setLinkSuccess(null);
+      }, 3000);
+      
+      // TODO: Handle the processed paper (add to uploaded files or trigger callback)
+      
+    } catch (error) {
+      console.error('Link processing failed:', error);
+      setLinkError(error instanceof Error ? error.message : 'Failed to process link. Please try again.');
+    } finally {
+      setIsProcessingLink(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Upload Area */}
@@ -85,6 +172,84 @@ export default function FileUploader({ onFilesUploaded }: FileUploaderProps) {
               Supported format: PDF only
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Link Input Section */}
+      <div className="border-2 border-dashed rounded-2xl p-6 bg-white/20 backdrop-blur-sm border-white/40">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-blue-600 rounded-full flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-gray-900">Or paste a link</h4>
+              <p className="text-sm text-gray-600">Enter an ArXiv or ADS link to automatically download the paper</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={linkInput}
+              onChange={(e) => setLinkInput(e.target.value)}
+              placeholder="https://arxiv.org/abs/2301.00001 or https://ui.adsabs.harvard.edu/abs/2023ApJ...950L..20M"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 backdrop-blur-sm"
+              onKeyPress={(e) => e.key === 'Enter' && processLink()}
+            />
+            
+            <button
+              onClick={processLink}
+              disabled={!linkInput.trim() || isProcessingLink}
+              className="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-green-700 hover:to-blue-700 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isProcessingLink ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  <span>Process Link</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="text-sm text-gray-500 space-y-1">
+            <p>Supported formats:</p>
+            <p>• ArXiv: https://arxiv.org/abs/2301.00001</p>
+            <p>• ADS: https://ui.adsabs.harvard.edu/abs/2023ApJ...950L..20M</p>
+          </div>
+
+          {/* Error Message */}
+          {linkError && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm text-red-700">{linkError}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {linkSuccess && (
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm text-green-700">{linkSuccess}</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -152,16 +317,6 @@ export default function FileUploader({ onFilesUploaded }: FileUploaderProps) {
         </div>
       )}
 
-      {/* Instructions */}
-      <div className="bg-blue-50/50 backdrop-blur-sm rounded-xl p-6 border border-blue-200/30">
-        <h4 className="text-lg font-semibold text-gray-900 mb-3">How it works</h4>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>• Upload your research papers in PDF format</p>
-          <p>• Our AI will analyze and extract key information</p>
-          <p>• You can then ask questions about your uploaded papers</p>
-          <p>• All papers are securely stored and processed</p>
-        </div>
-      </div>
     </div>
   );
 }

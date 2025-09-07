@@ -1,26 +1,30 @@
-// TODO: Implement a math extension for LaTeX rendering
-// This will be implemented in a future step when we add math functionality
-
 import { Extension } from '@tiptap/core'
+import { renderLatexInText } from '@/lib/latex'
 
 export const MathExtension = Extension.create({
   name: 'math',
   
   addOptions() {
     return {
-      // Configuration options will go here
+      HTMLAttributes: {},
     }
   },
   
   addCommands() {
     return {
-      // Math commands will be added here
+      insertMath: (latex: string) => ({ commands }) => {
+        const rendered = renderLatexInText(`$${latex}$`)
+        return commands.insertContent(rendered)
+      },
     }
   },
   
   addKeyboardShortcuts() {
     return {
-      // Keyboard shortcuts for math will be added here
+      'Mod-m': () => {
+        // Simple shortcut to insert math - user can type LaTeX and it will be rendered
+        return false // Let the user type $...$ naturally
+      },
     }
-  }
+  },
 })

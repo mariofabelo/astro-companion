@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Paper, Source } from '@/types/paper';
 import { useMutation } from '@tanstack/react-query';
 import { ResearchSpace } from '@/lib/research-spaces';
+import LaTeXText from './LaTeXText';
 
 interface PaperSearchResultsProps {
   searchResults: Paper[];
@@ -160,9 +161,11 @@ export default function PaperSearchResults({
                 onClick={() => handleToggleSelect(paper)}
               >
                 <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-lg font-semibold text-slate-900 line-clamp-2 leading-tight">
-                    {paper.title}
-                  </h3>
+                  <LaTeXText 
+                    text={paper.title}
+                    as="h3"
+                    className="text-lg font-semibold text-slate-900 line-clamp-2 leading-tight"
+                  />
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -184,9 +187,11 @@ export default function PaperSearchResults({
                   {paper.authors.join(', ')}
                 </p>
                 
-                <p className="text-sm text-slate-700 line-clamp-3 mb-4 leading-relaxed">
-                  {paper.abstract}
-                </p>
+                <LaTeXText 
+                  text={paper.abstract}
+                  as="p"
+                  className="text-sm text-slate-700 line-clamp-3 mb-4 leading-relaxed"
+                />
                 
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${

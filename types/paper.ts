@@ -6,6 +6,7 @@ export type Paper = {
   title: string;
   authors: string[];
   abstract?: string;
+  summary?: string;        // AI-generated summary of the abstract
   year?: number;
   categories?: string[];
   url_html: string;

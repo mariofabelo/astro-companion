@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Paper } from '@/types/paper';
+import LaTeXText from './LaTeXText';
 
 interface PaperGridProps {
   papers: Paper[];
@@ -52,9 +53,11 @@ export default function PaperGrid({
               {/* Header */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-semibold text-slate-900 line-clamp-2 leading-tight mb-2">
-                    {paper.title}
-                  </h3>
+                  <LaTeXText 
+                    text={paper.title}
+                    as="h3"
+                    className="text-lg font-semibold text-slate-900 line-clamp-2 leading-tight mb-2"
+                  />
                   <p className="text-sm text-slate-600 line-clamp-1">
                     {paper.authors.join(', ')}
                   </p>
@@ -70,9 +73,11 @@ export default function PaperGrid({
               
               {/* Abstract */}
               <div className="flex-1 mb-4">
-                <p className="text-sm text-slate-700 line-clamp-4 leading-relaxed">
-                  {paper.abstract}
-                </p>
+                <LaTeXText 
+                  text={paper.abstract}
+                  as="p"
+                  className="text-sm text-slate-700 line-clamp-4 leading-relaxed"
+                />
               </div>
               
               {/* Metadata */}

@@ -2,6 +2,7 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
+import { MathExtension } from './math-extension'
 
 interface TipTapEditorProps {
   content?: any
@@ -22,7 +23,8 @@ export default function TipTapEditor({
       Placeholder.configure({ 
         placeholder,
         emptyEditorClass: 'is-editor-empty'
-      })
+      }),
+      MathExtension
     ],
     content: content ?? { 
       type: 'doc', 
@@ -139,6 +141,18 @@ export default function TipTapEditor({
             }`}
           >
             Quote
+          </button>
+          <button
+            onClick={() => {
+              const latex = prompt('Enter LaTeX expression:')
+              if (latex) {
+                editor.chain().focus().insertMath(latex).run()
+              }
+            }}
+            className="px-2 py-1 text-sm rounded hover:bg-gray-200"
+            title="Insert Math (LaTeX)"
+          >
+            ∑
           </button>
         </div>
       </div>

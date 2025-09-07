@@ -131,6 +131,8 @@ export default function MainPage() {
   const handleModeSelection = (selectedMode: Mode) => {
     setMode(selectedMode);
     setShowAddPapersModal(false);
+    // Clear any selected space when adding new papers
+    setCurrentSpace(null);
     // If in space view, switch back to main view to show the selected mode
     if (viewMode === 'space') {
       setViewMode('main');
@@ -628,6 +630,7 @@ export default function MainPage() {
                 What do you want to research?
               </p>
             </div>
+
 
             {/* Content Container */}
             <div className="p-2">

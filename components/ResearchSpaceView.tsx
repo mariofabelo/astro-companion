@@ -151,6 +151,7 @@ export default function ResearchSpaceView({
                 onPaperClick={handlePaperClick}
                 onPaperSelect={handlePaperSelect}
                 selectedPaper={selectedPaper || undefined}
+                spaceId={space.id}
               />
             )
           ) : (

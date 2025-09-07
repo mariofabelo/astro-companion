@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Paper, Source } from '@/types/paper';
 import CanvasNode from './CanvasNode';
+import LaTeXText from './LaTeXText';
 
 interface ChatMessage {
   id: string;
@@ -269,7 +270,11 @@ export default function ChatLLMInterface({
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h4 className="text-sm font-semibold text-slate-900 line-clamp-2 font-sf">{paper.title}</h4>
+                  <LaTeXText 
+                    text={paper.title}
+                    as="h4"
+                    className="text-sm font-semibold text-slate-900 line-clamp-2 font-sf"
+                  />
                   <button
                     onClick={() => handleToggleSelect(paper)}
                     className={`ml-2 p-1.5 rounded-lg transition-colors ${
@@ -284,7 +289,11 @@ export default function ChatLLMInterface({
                   </button>
                 </div>
                 <p className="text-xs text-slate-500 mb-2 font-sf">{paper.authors.join(', ')}</p>
-                <p className="text-xs text-slate-600 line-clamp-2 mb-3 font-sf">{paper.abstract}</p>
+                <LaTeXText 
+                  text={paper.abstract || ''}
+                  as="p"
+                  className="text-xs text-slate-600 line-clamp-2 mb-3 font-sf"
+                />
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                     paper.source === 'arXiv' 
@@ -305,26 +314,6 @@ export default function ChatLLMInterface({
         </div>
       )}
 
-      {/* Current Session Papers */}
-      {currentSessionPapers.length > 0 && (
-        <div className="border-t border-slate-200/60 p-4 mt-4 bg-white/50 rounded-2xl">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4 font-sf">
-            Session Papers ({currentSessionPapers.length})
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {currentSessionPapers.map((paper) => (
-              <CanvasNode
-                key={paper.id}
-                paper={paper}
-                onOpen={() => {
-                  // Handle opening paper details
-                  console.log('Opening paper:', paper.title);
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
     </div>
   );

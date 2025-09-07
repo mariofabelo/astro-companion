@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Paper } from '@/types/paper';
+import LaTeXText from './LaTeXText';
 
 interface PaperIdentificationPanelProps {
   paper: Paper;
@@ -68,9 +69,11 @@ export default function PaperIdentificationPanel({
         {/* Title */}
         <div>
           <h3 className="text-sm font-semibold text-slate-700 mb-2">Title</h3>
-          <h1 className="text-lg font-bold text-slate-900 leading-tight">
-            {paper.title}
-          </h1>
+          <LaTeXText 
+            text={paper.title}
+            as="h1"
+            className="text-lg font-bold text-slate-900 leading-tight"
+          />
         </div>
 
         {/* Authors */}
@@ -88,9 +91,11 @@ export default function PaperIdentificationPanel({
         {/* Abstract */}
         <div>
           <h3 className="text-sm font-semibold text-slate-700 mb-2">Abstract</h3>
-          <p className="text-sm text-slate-700 leading-relaxed">
-            {paper.abstract}
-          </p>
+          <LaTeXText 
+            text={paper.abstract}
+            as="p"
+            className="text-sm text-slate-700 leading-relaxed"
+          />
         </div>
 
         {/* Metadata */}

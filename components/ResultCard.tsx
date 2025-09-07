@@ -1,6 +1,7 @@
 'use client';
 
 import { Paper } from '@/types/paper';
+import LaTeXText from './LaTeXText';
 
 interface ResultCardProps {
   paper: Paper;
@@ -14,9 +15,11 @@ export default function ResultCard({ paper, isSelected, onToggleSelect }: Result
       <div className="flex justify-between items-start gap-4">
         <div className="flex-1 min-w-0">
           {/* Title */}
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 leading-tight">
-            {paper.title}
-          </h3>
+          <LaTeXText 
+            text={paper.title}
+            as="h3"
+            className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 leading-tight"
+          />
 
           {/* Authors */}
           <p className="text-sm text-gray-600 mb-3 line-clamp-1">
@@ -25,9 +28,11 @@ export default function ResultCard({ paper, isSelected, onToggleSelect }: Result
 
           {/* Abstract */}
           {paper.abstract && (
-            <p className="text-sm text-gray-700 mb-4 line-clamp-3 leading-relaxed">
-              {paper.abstract}
-            </p>
+            <LaTeXText 
+              text={paper.abstract}
+              as="p"
+              className="text-sm text-gray-700 mb-4 line-clamp-3 leading-relaxed"
+            />
           )}
 
           {/* Badges */}

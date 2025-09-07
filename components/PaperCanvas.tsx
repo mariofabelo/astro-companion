@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Paper } from '@/types/paper';
+import { generateSummariesForPapers } from '@/lib/summaries';
+import LaTeXText from './LaTeXText';
 
 interface PaperNode {
   id: string;
@@ -9,7 +11,6 @@ interface PaperNode {
   x: number;
   y: number;
   width: number;
-  height: number;
   isSelected: boolean;
 }
 
@@ -18,13 +19,15 @@ interface PaperCanvasProps {
   onPaperClick: (paper: Paper) => void;
   onPaperSelect: (paper: Paper) => void;
   selectedPaper?: Paper;
+  spaceId?: string;
 }
 
 export default function PaperCanvas({ 
   papers, 
   onPaperClick, 
   onPaperSelect, 
-  selectedPaper 
+  selectedPaper,
+  spaceId
 }: PaperCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<PaperNode[]>([]);
@@ -34,24 +37,53 @@ export default function PaperCanvas({
   const [scale, setScale] = useState(0.6); // Start with a smaller scale to prevent jump
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [papersWithSummaries, setPapersWithSummaries] = useState<Paper[]>([]);
+  const [summaryLoading, setSummaryLoading] = useState<Set<string>>(new Set());
 
+  // Generate summaries for papers when they change
+  useEffect(() => {
+    if (!papers || papers.length === 0) {
+      setPapersWithSummaries([]);
+      return;
+    }
+
+    const generateSummaries = async () => {
+      // Set loading state for papers that need summaries
+      const papersNeedingSummaries = papers.filter(p => !p.summary && p.abstract);
+      papersNeedingSummaries.forEach(paper => {
+        setSummaryLoading(prev => new Set(prev).add(paper.id));
+      });
+
+      try {
+        const updatedPapers = await generateSummariesForPapers(papers, spaceId);
+        setPapersWithSummaries(updatedPapers);
+      } catch (error) {
+        console.error('Failed to generate summaries:', error);
+        setPapersWithSummaries(papers);
+      } finally {
+        // Clear loading state for all papers
+        setSummaryLoading(new Set());
+      }
+    };
+
+    generateSummaries();
+  }, [papers, spaceId]);
 
   // Initialize paper nodes when papers change
   useEffect(() => {
-    if (!papers || papers.length === 0) {
+    if (!papersWithSummaries || papersWithSummaries.length === 0) {
       setNodes([]);
       return;
     }
     
-    const newNodes: PaperNode[] = papers.map((paper, index) => {
+    const newNodes: PaperNode[] = papersWithSummaries.map((paper, index) => {
       // Create new node with better spacing and sizing
-      const cols = Math.ceil(Math.sqrt(papers.length));
+      const cols = Math.ceil(Math.sqrt(papersWithSummaries.length));
       const row = Math.floor(index / cols);
       const col = index % cols;
       
       // Better spacing and sizing for the available space
       const cardWidth = 320;
-      const cardHeight = 420;
       const spacingX = 50;
       const spacingY = 50;
       const startX = 50;
@@ -61,9 +93,8 @@ export default function PaperCanvas({
         id: paper.id,
         paper,
         x: startX + col * (cardWidth + spacingX),
-        y: startY + row * (cardHeight + spacingY),
+        y: startY + row * 500, // Use a base spacing, cards will size themselves
         width: cardWidth,
-        height: cardHeight,
         isSelected: selectedPaper?.id === paper.id
       };
     });
@@ -80,7 +111,11 @@ export default function PaperCanvas({
           const minX = Math.min(...newNodes.map(n => n.x));
           const maxX = Math.max(...newNodes.map(n => n.x + n.width));
           const minY = Math.min(...newNodes.map(n => n.y));
-          const maxY = Math.max(...newNodes.map(n => n.y + n.height));
+          // Estimate content height based on number of rows and base card height
+          const estimatedCardHeight = 400; // Base estimate
+          const cols = Math.ceil(Math.sqrt(newNodes.length));
+          const spacingY = 50;
+          const maxY = minY + Math.ceil(newNodes.length / cols) * (estimatedCardHeight + spacingY);
 
           const contentWidth = maxX - minX;
           const contentHeight = maxY - minY;
@@ -98,7 +133,7 @@ export default function PaperCanvas({
         }
       }, 100);
     }
-  }, [papers, selectedPaper, nodes.length]);
+  }, [papersWithSummaries, selectedPaper, nodes.length]);
 
   // Update selected state when selectedPaper changes
   useEffect(() => {
@@ -220,7 +255,12 @@ export default function PaperCanvas({
     const minX = Math.min(...nodes.map(n => n.x));
     const maxX = Math.max(...nodes.map(n => n.x + n.width));
     const minY = Math.min(...nodes.map(n => n.y));
-    const maxY = Math.max(...nodes.map(n => n.y + n.height));
+    
+    // Estimate content height based on number of rows
+    const cols = Math.ceil(Math.sqrt(nodes.length));
+    const estimatedCardHeight = 400;
+    const spacingY = 50;
+    const maxY = minY + Math.ceil(nodes.length / cols) * (estimatedCardHeight + spacingY);
 
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
@@ -239,13 +279,6 @@ export default function PaperCanvas({
 
   return (
     <div className="relative w-full h-full bg-slate-50 overflow-hidden" style={{ minHeight: '400px', width: '100%' }}>
-      {/* Debug info */}
-      <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg p-3 text-sm">
-        <div>Papers: {papers.length}</div>
-        <div>Nodes: {nodes.length}</div>
-        <div>Scale: {Math.round(scale * 100)}%</div>
-        <div>Offset: {canvasOffset.x}, {canvasOffset.y}</div>
-      </div>
       {/* Canvas Controls */}
       <div className="absolute top-4 right-4 z-10 flex gap-2">
         <button
@@ -291,62 +324,37 @@ export default function PaperCanvas({
             minHeight: '100%'
           }}
         >
-          {/* Test rectangle */}
-          <div
-            data-paper-node="true"
-            className="absolute border-2 border-red-500 bg-red-100 rounded-lg"
-            style={{
-              left: 50,
-              top: 50,
-              width: 200,
-              height: 100
-            }}
-          >
-            <div className="p-2 text-xs text-red-700">Test Canvas</div>
-          </div>
           
-          {/* Fallback: Show paper titles if nodes aren't rendering */}
-          {nodes.length === 0 && papers.length > 0 && (
-            <div className="absolute top-20 left-4 bg-yellow-100 border-2 border-yellow-500 rounded-lg p-4">
-              <h3 className="font-bold text-yellow-800">Papers found but no nodes created:</h3>
-              {papers.map((paper, index) => (
-                <div key={paper.id} className="text-yellow-700 text-sm">
-                  {index + 1}. {paper.title}
-                </div>
-              ))}
-            </div>
-          )}
           
           {nodes.map((node) => (
             <div
               key={node.id}
               data-paper-node="true"
-              className={`absolute border-4 rounded-xl shadow-lg transition-all duration-200 cursor-pointer ${
+              className={`absolute border-2 rounded-xl shadow-lg transition-all duration-200 cursor-pointer ${
                 node.isSelected
                   ? 'border-blue-500 shadow-blue-200/50 bg-blue-50'
-                  : 'border-green-500 bg-green-50 hover:border-green-600'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
               }`}
               style={{
                 left: node.x,
                 top: node.y,
                 width: node.width,
-                height: node.height,
-                zIndex: 10,
-                backgroundColor: '#dcfce7', // Force green background
-                border: '4px solid #16a34a' // Force green border
+                zIndex: 10
               }}
               onMouseDown={(e) => handleMouseDown(e, node.id)}
               onClick={(e) => handleNodeClick(e, node.paper)}
               onDoubleClick={(e) => handleNodeDoubleClick(e, node.paper)}
             >
               {/* Paper Preview */}
-              <div className="w-full h-full bg-white rounded-xl overflow-hidden">
+              <div className="w-full bg-white rounded-xl overflow-hidden flex flex-col">
                 {/* Header */}
-                <div className="p-4 border-b border-slate-100">
+                <div className="p-4 border-b border-slate-100 flex-shrink-0">
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-slate-900 line-clamp-2 leading-tight">
-                      {node.paper.title}
-                    </h3>
+                    <LaTeXText 
+                      text={node.paper.title}
+                      as="h3"
+                      className="text-sm font-semibold text-slate-900 line-clamp-2 leading-tight"
+                    />
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ml-2 flex-shrink-0 ${
                       node.paper.source === 'arXiv' 
                         ? 'bg-orange-100 text-orange-700'
@@ -361,14 +369,23 @@ export default function PaperCanvas({
                 </div>
 
                 {/* Content */}
-                <div className="p-4 flex-1">
-                  <p className="text-xs text-slate-700 line-clamp-6 leading-relaxed">
-                    {node.paper.abstract}
-                  </p>
+                <div className="p-4 flex-1 min-h-0">
+                  {summaryLoading.has(node.paper.id) ? (
+                    <div className="flex items-center justify-center h-20">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                      <span className="ml-2 text-xs text-slate-500">Generating summary...</span>
+                    </div>
+                  ) : (
+                    <LaTeXText 
+                      text={node.paper.summary || node.paper.abstract || 'No summary available'}
+                      as="p"
+                      className="text-xs text-slate-700 leading-relaxed"
+                    />
+                  )}
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-slate-100 bg-slate-50">
+                <div className="p-4 border-t border-slate-100 bg-slate-50 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {node.paper.year && (

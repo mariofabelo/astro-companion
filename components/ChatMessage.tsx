@@ -1,3 +1,5 @@
+import LaTeXText from './LaTeXText';
+
 interface ChatMessageProps {
   message: string
   isUser: boolean
@@ -48,15 +50,19 @@ export default function ChatMessage({ message, isUser, timestamp, papers }: Chat
                 <div key={index} className="glass-strong border border-glass-200 rounded-2xl p-6 shadow-glass-lg hover:neon-glow transition-all duration-300 group">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="text-lg font-bold text-white mb-2 group-hover:text-gradient-neon transition-all duration-300">
-                        {paper.title}
-                      </h4>
+                      <LaTeXText 
+                        text={paper.title}
+                        as="h4"
+                        className="text-lg font-bold text-white mb-2 group-hover:text-gradient-neon transition-all duration-300"
+                      />
                       <p className="text-sm text-glass-300 mb-3 font-sf-mono tracking-wider">
                         {paper.authors}
                       </p>
-                      <p className="text-base text-glass-200 mb-4 leading-relaxed">
-                        {paper.snippet}
-                      </p>
+                      <LaTeXText 
+                        text={paper.snippet}
+                        as="p"
+                        className="text-base text-glass-200 mb-4 leading-relaxed"
+                      />
                       <div className="flex items-center space-x-6 text-sm text-glass-300 font-sf-mono">
                         <span className="flex items-center space-x-2">
                           <span className="text-neon-400">📊</span>
