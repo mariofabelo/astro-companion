@@ -17,14 +17,29 @@ export default function PdfPopover({ paper, isOpen, onClose }: PdfPopoverProps) 
   const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [scale, setScale] = useState(1.0);
+  const [pdfUrl, setPdfUrl] = useState<string>('');
+
+  // Set PDF URL for papers
+  useEffect(() => {
+    if (isOpen && paper) {
+      if (paper.source === 'ads' && paper.id.startsWith('ads:')) {
+        // For ADS papers, use the abstract page which has PDF links
+        const bibcode = paper.id.replace('ads:', '');
+        setPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
+      } else {
+        // For non-ADS papers, use existing logic
+        setPdfUrl(paper.url_pdf || '');
+      }
+    }
+  }, [isOpen, paper]);
 
   useEffect(() => {
-    if (!isOpen || !paper?.url_pdf) return;
+    if (!isOpen || !pdfUrl) return;
 
     const loadPdf = async () => {
       setIsLoading(true);
       try {
-        const canvas = await renderPdfPage(paper.url_pdf!, currentPage, scale);
+        const canvas = await renderPdfPage(pdfUrl, currentPage, scale);
         if (canvasRef.current) {
           const ctx = canvasRef.current.getContext('2d');
           if (ctx) {
@@ -44,7 +59,7 @@ export default function PdfPopover({ paper, isOpen, onClose }: PdfPopoverProps) 
     };
 
     loadPdf();
-  }, [paper?.url_pdf, currentPage, scale, isOpen]);
+  }, [pdfUrl, currentPage, scale, isOpen]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -181,9 +196,9 @@ export default function PdfPopover({ paper, isOpen, onClose }: PdfPopoverProps) 
             >
               View on {paper.source}
             </a>
-            {paper.url_pdf && (
+            {pdfUrl && (
               <a
-                href={paper.url_pdf}
+                href={pdfUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Paper } from '@/types/paper';
 
 interface PaperIdentificationPanelProps {
@@ -13,6 +14,19 @@ export default function PaperIdentificationPanel({
   onOpenPDF, 
   onClose 
 }: PaperIdentificationPanelProps) {
+  const [resolvedPdfUrl, setResolvedPdfUrl] = useState<string>('');
+
+  // Set PDF URL for papers
+  useEffect(() => {
+    if (paper.source === 'ads' && paper.id.startsWith('ads:')) {
+      // For ADS papers, use the abstract page which has PDF links
+      const bibcode = paper.id.replace('ads:', '');
+      setResolvedPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
+    } else {
+      // For non-ADS papers, use existing logic
+      setResolvedPdfUrl(paper.url_pdf || '');
+    }
+  }, [paper.id, paper.source, paper.url_pdf]);
   const handleExternalLink = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -155,9 +169,9 @@ export default function PaperIdentificationPanel({
             View Online
           </button>
           
-          {paper.url_pdf && (
+          {resolvedPdfUrl && (
             <button
-              onClick={() => handleExternalLink(paper.url_pdf)}
+              onClick={() => handleExternalLink(resolvedPdfUrl)}
               className="flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

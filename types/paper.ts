@@ -15,6 +15,7 @@ export type Paper = {
   citations?: number;
   publishedDate?: string;
   journal?: string;
+  arxivId?: string;        // Internal field for citation lookup
 };
 
 export type SearchRequest = {

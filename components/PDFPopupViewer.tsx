@@ -15,16 +15,28 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
   const [error, setError] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string>('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Get PDF URL - prefer direct PDF link, fallback to HTML page
-  const pdfUrl = paper.url_pdf || paper.url_html;
+  // Set PDF URL for papers
+  useEffect(() => {
+    if (paper.source === 'ads' && paper.id.startsWith('ads:')) {
+      // For ADS papers, use the abstract page which has PDF links
+      const bibcode = paper.id.replace('ads:', '');
+      setPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
+    } else {
+      // For non-ADS papers, use existing logic
+      setPdfUrl(paper.url_pdf || paper.url_html);
+    }
+  }, [paper.id, paper.source, paper.url_pdf, paper.url_html]);
 
   useEffect(() => {
-    setIsLoading(true);
-    setError(null);
-    setCurrentPage(1);
-  }, [paper.id]);
+    if (pdfUrl) {
+      setIsLoading(true);
+      setError(null);
+      setCurrentPage(1);
+    }
+  }, [pdfUrl]);
 
   const handlePreviousPage = () => {
     if (currentPage > 1) {
@@ -251,20 +263,22 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
             </div>
           )}
 
-          <iframe
-            ref={iframeRef}
-            src={pdfUrl}
-            className="w-full h-full border-0"
-            style={{
-              transform: `scale(${scale})`,
-              transformOrigin: 'top left',
-              width: `${100 / scale}%`,
-              height: `${100 / scale}%`
-            }}
-            onLoad={handleIframeLoad}
-            onError={handleIframeError}
-            title={`PDF: ${paper.title}`}
-          />
+          {pdfUrl && (
+            <iframe
+              ref={iframeRef}
+              src={pdfUrl}
+              className="w-full h-full border-0"
+              style={{
+                transform: `scale(${scale})`,
+                transformOrigin: 'top left',
+                width: `${100 / scale}%`,
+                height: `${100 / scale}%`
+              }}
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
+              title={`PDF: ${paper.title}`}
+            />
+          )}
         </div>
 
         {/* Footer with shortcuts */}

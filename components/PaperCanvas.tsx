@@ -150,7 +150,17 @@ export default function PaperCanvas({
   }, []);
 
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 1 || (e.button === 0 && e.ctrlKey)) { // Middle click or Ctrl+click
+    // Allow panning with right-click, middle-click, Ctrl+left-click, or left-click on empty space
+    const isRightClick = e.button === 2;
+    const isMiddleClick = e.button === 1;
+    const isCtrlClick = e.button === 0 && e.ctrlKey;
+    const isLeftClickOnEmpty = e.button === 0 && !e.ctrlKey && 
+      (e.target === e.currentTarget || 
+       (e.target as HTMLElement).classList.contains('relative') ||
+       (e.target as HTMLElement).tagName === 'DIV' && 
+       !(e.target as HTMLElement).closest('[data-paper-node]'));
+    
+    if (isRightClick || isMiddleClick || isCtrlClick || isLeftClickOnEmpty) {
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
       e.preventDefault();
@@ -159,9 +169,31 @@ export default function PaperCanvas({
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
+    
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    setScale(prev => Math.max(0.1, Math.min(3, prev * delta)));
-  }, []);
+    const newScale = Math.max(0.1, Math.min(3, scale * delta));
+    
+    if (newScale === scale) return; // No change in scale
+    
+    // Get the mouse position relative to the canvas
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const canvasRect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - canvasRect.left;
+    const mouseY = e.clientY - canvasRect.top;
+    
+    // Calculate the world position of the mouse before zoom
+    const worldX = (mouseX - canvasOffset.x) / scale;
+    const worldY = (mouseY - canvasOffset.y) / scale;
+    
+    // Calculate the new offset to keep the world position under the mouse
+    const newOffsetX = mouseX - worldX * newScale;
+    const newOffsetY = mouseY - worldY * newScale;
+    
+    setScale(newScale);
+    setCanvasOffset({ x: newOffsetX, y: newOffsetY });
+  }, [scale, canvasOffset]);
 
   const handleNodeClick = useCallback((e: React.MouseEvent, paper: Paper) => {
     e.stopPropagation();
@@ -261,6 +293,7 @@ export default function PaperCanvas({
         >
           {/* Test rectangle */}
           <div
+            data-paper-node="true"
             className="absolute border-2 border-red-500 bg-red-100 rounded-lg"
             style={{
               left: 50,
@@ -287,6 +320,7 @@ export default function PaperCanvas({
           {nodes.map((node) => (
             <div
               key={node.id}
+              data-paper-node="true"
               className={`absolute border-4 rounded-xl shadow-lg transition-all duration-200 cursor-pointer ${
                 node.isSelected
                   ? 'border-blue-500 shadow-blue-200/50 bg-blue-50'
@@ -367,7 +401,7 @@ export default function PaperCanvas({
       {/* Instructions */}
       <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg p-3 text-sm text-slate-600">
         <div className="flex items-center gap-4">
-          <span>Click to select • Double-click to open • Ctrl+drag to pan • Scroll to zoom</span>
+          <span>Click to select • Double-click to open • Click empty space to pan • Scroll to zoom at cursor</span>
         </div>
       </div>
     </div>

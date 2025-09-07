@@ -3,6 +3,7 @@ import { parseStringPromise } from "xml2js";
 import { z } from "zod";
 import { SearchResponse, Paper } from "@/types/paper";
 import { searchADSPapers } from "@/lib/ads";
+import { getCitationCountsForArxivPapers, extractArxivIdFromString } from "@/lib/semantic-scholar";
 
 // Type definitions for arXiv XML response
 interface ArxivLink {
@@ -41,7 +42,7 @@ interface ArxivFeed {
 
 const Body = z.object({
   query: z.string().min(2),
-  maxResults: z.union([z.literal(2), z.literal(3), z.literal(5), z.literal(10)]).default(5),
+  maxResults: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(5), z.literal(10)]).default(5),
   sources: z.array(z.enum(["arXiv","ads"])).default(["arXiv"])
 });
 
@@ -166,11 +167,19 @@ async function searchArxiv(query: string, maxResults: number): Promise<Paper[]> 
   const feed = await parseStringPromise(xml, { explicitArray: false }) as ArxivFeed;
   const entries = ([] as ArxivEntry[]).concat(feed.feed.entry ?? []);
 
-  return entries.map((e, i) => {
+  // Extract arXiv IDs for citation count lookup
+  const arxivIds: string[] = [];
+  const papers = entries.map((e, i) => {
     const links = ([] as ArxivLink[]).concat(e.link ?? []);
     const html = links.find((l) => l.$?.rel === "alternate")?.$.href ?? e.id;
     const pdf = links.find((l) => l.$?.type === "application/pdf")?.$.href;
     const authors = ([] as ArxivAuthor[]).concat(e.author ?? []).map((a) => a.name).filter(Boolean);
+    
+    // Extract arXiv ID from the entry
+    const arxivId = extractArxivIdFromString(e.id || '');
+    if (arxivId) {
+      arxivIds.push(arxivId);
+    }
     
     return {
       id: `arxiv:${e.id?.split('/abs/')[1] ?? i}`,
@@ -182,11 +191,27 @@ async function searchArxiv(query: string, maxResults: number): Promise<Paper[]> 
       categories: e.category ? ([] as ArxivCategory[]).concat(e.category).map((c) => c.$.term) : [],
       url_html: html,
       url_pdf: pdf,
-      citations: 0, // arXiv doesn't provide citation count in basic API
+      citations: 0, // Will be updated with Semantic Scholar data
       publishedDate: e.published ? new Date(e.published).toLocaleDateString() : undefined,
-      journal: "arXiv"
+      journal: "arXiv",
+      arxivId: arxivId || undefined // Convert null to undefined
     };
   });
+
+  // Fetch citation counts from Semantic Scholar
+  try {
+    const citationCounts = await getCitationCountsForArxivPapers(arxivIds);
+    
+    // Update papers with citation counts
+    return papers.map(paper => ({
+      ...paper,
+      citations: paper.arxivId ? (citationCounts.get(paper.arxivId) || 0) : 0
+    }));
+  } catch (error) {
+    console.error('Error fetching citation counts from Semantic Scholar:', error);
+    // Return papers with 0 citations if Semantic Scholar fails
+    return papers;
+  }
 }
 
 // Helper function to search ADS
