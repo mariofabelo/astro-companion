@@ -12,11 +12,11 @@ export const MathExtension = Extension.create({
   
   addCommands() {
     return {
-      insertMath: (latex: string) => ({ commands }) => {
+      insertMath: (latex: string) => ({ commands }: any) => {
         const rendered = renderLatexInText(`$${latex}$`)
         return commands.insertContent(rendered)
       },
-    }
+    } as any
   },
   
   addKeyboardShortcuts() {

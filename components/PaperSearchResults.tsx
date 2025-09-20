@@ -92,7 +92,7 @@ export default function PaperSearchResults({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-none z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200">
@@ -188,7 +188,7 @@ export default function PaperSearchResults({
                 </p>
                 
                 <LaTeXText 
-                  text={paper.abstract}
+                  text={paper.abstract || ''}
                   as="p"
                   className="text-sm text-slate-700 line-clamp-3 mb-4 leading-relaxed"
                 />

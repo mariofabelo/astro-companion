@@ -10,6 +10,7 @@ import PaperSearchResults from './PaperSearchResults';
 import ResearchSpaceView from './ResearchSpaceView';
 import { useMutation } from '@tanstack/react-query';
 import { researchSpacesService, ResearchSpace } from '@/lib/research-spaces';
+import { IoWarning } from 'react-icons/io5';
 
 // ResearchSpace interface is now imported from lib/research-spaces
 
@@ -38,6 +39,7 @@ export default function MainPage() {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [spaceToRename, setSpaceToRename] = useState<ResearchSpace | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<ResearchSpace | null>(null);
   const router = useRouter();
   const supabase = createSupabaseBrowser();
 
@@ -296,13 +298,20 @@ export default function MainPage() {
     }
   };
 
-  const handleDeleteSpace = async () => {
+  const handleDeleteSpace = () => {
     if (contextMenuSpace) {
+      setShowDeleteConfirm(contextMenuSpace);
+      setContextMenuSpace(null);
+    }
+  };
+
+  const handleConfirmDeleteSpace = async () => {
+    if (showDeleteConfirm) {
       try {
-        const success = await researchSpacesService.deleteSpace(contextMenuSpace.id);
+        const success = await researchSpacesService.deleteSpace(showDeleteConfirm.id);
         if (success) {
-          setResearchSpaces(prev => prev.filter(s => s.id !== contextMenuSpace.id));
-          if (currentSpace?.id === contextMenuSpace.id) {
+          setResearchSpaces(prev => prev.filter(s => s.id !== showDeleteConfirm.id));
+          if (currentSpace?.id === showDeleteConfirm.id) {
             setCurrentSpace(null);
             setViewMode('main');
           }
@@ -310,8 +319,12 @@ export default function MainPage() {
       } catch (error) {
         console.error('Error deleting space:', error);
       }
-      setContextMenuSpace(null);
+      setShowDeleteConfirm(null);
     }
+  };
+
+  const handleCancelDeleteSpace = () => {
+    setShowDeleteConfirm(null);
   };
 
   const handleRenameSubmit = async () => {
@@ -420,7 +433,7 @@ export default function MainPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className={`${sidebarCollapsed ? 'hidden' : 'block'}`}>
-              <h1 className="text-2xl font-bold text-slate-900">AstroAI</h1>
+              <h1 className="text-2xl font-bold text-slate-900">Rastro</h1>
             </div>
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -772,7 +785,14 @@ export default function MainPage() {
                       </div>
                     </div>
                 ) : (
-                  <FileUploader />
+                  <FileUploader 
+                    onPaperProcessed={(paperId, paperData) => {
+                      console.log('Paper processed successfully:', paperId, paperData);
+                    }}
+                    researchSpaces={researchSpaces}
+                    onAddToSpace={handleAddToSpace}
+                    onCreateNewSpace={handleCreateNewSpace}
+                  />
                 )}
 
                 {/* Mode Selection */}
@@ -821,7 +841,7 @@ export default function MainPage() {
 
       {/* Add New Papers Modal */}
       {showAddPapersModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -914,7 +934,7 @@ export default function MainPage() {
 
       {/* Rename Modal */}
       {showRenameModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-none z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -965,6 +985,43 @@ export default function MainPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-none z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <IoWarning className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Delete Research Space</h3>
+                <p className="text-sm text-slate-600">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <p className="text-slate-700 mb-6">
+              Are you sure you want to delete "{showDeleteConfirm.title}"? 
+              This will permanently remove the research space and all its papers from your account.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelDeleteSpace}
+                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteSpace}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete Space
+              </button>
             </div>
           </div>
         </div>

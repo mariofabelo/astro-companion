@@ -85,7 +85,7 @@ export default function PdfPopover({ paper, isOpen, onClose }: PdfPopoverProps) 
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+        className="fixed inset-0 bg-black/40 backdrop-blur-none z-40"
         onClick={onClose}
       />
 

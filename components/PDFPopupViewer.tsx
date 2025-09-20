@@ -116,7 +116,7 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
   };
 
   return (
-    <div className={`fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center ${
+    <div className={`fixed inset-0 bg-black/80 backdrop-blur-none z-50 flex items-center justify-center ${
       isFullscreen ? 'p-0' : 'p-4'
     }`}>
       <div className={`bg-white rounded-2xl shadow-2xl flex flex-col ${

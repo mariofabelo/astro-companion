@@ -6,6 +6,11 @@ export async function generateSummary(paper: Paper): Promise<string> {
     return 'No abstract available for this paper.'
   }
 
+  // If paper already has a summary, return it
+  if (paper.summary) {
+    return paper.summary
+  }
+
   try {
     const response = await fetch('/api/summarize', {
       method: 'POST',
@@ -14,7 +19,8 @@ export async function generateSummary(paper: Paper): Promise<string> {
       },
       body: JSON.stringify({
         abstract: paper.abstract,
-        title: paper.title
+        title: paper.title,
+        paperId: paper.id
       })
     })
 
@@ -34,6 +40,16 @@ export async function generateSummariesForPapers(
   papers: Paper[], 
   spaceId?: string
 ): Promise<Paper[]> {
+  // Filter papers that actually need summaries
+  const papersNeedingSummaries = papers.filter(paper => !paper.summary && paper.abstract)
+  
+  if (papersNeedingSummaries.length === 0) {
+    console.log('No papers need summaries, returning original papers')
+    return papers
+  }
+
+  console.log(`Generating summaries for ${papersNeedingSummaries.length} papers`)
+
   const papersWithSummaries = await Promise.all(
     papers.map(async (paper) => {
       if (!paper.summary && paper.abstract) {

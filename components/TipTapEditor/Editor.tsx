@@ -24,7 +24,7 @@ export default function TipTapEditor({
         placeholder,
         emptyEditorClass: 'is-editor-empty'
       }),
-      MathExtension
+      MathExtension as any
     ],
     content: content ?? { 
       type: 'doc', 
@@ -146,7 +146,7 @@ export default function TipTapEditor({
             onClick={() => {
               const latex = prompt('Enter LaTeX expression:')
               if (latex) {
-                editor.chain().focus().insertMath(latex).run()
+                (editor as any).chain().focus().insertMath(latex).run()
               }
             }}
             className="px-2 py-1 text-sm rounded hover:bg-gray-200"

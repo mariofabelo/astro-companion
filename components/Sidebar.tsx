@@ -109,7 +109,7 @@ export default function Sidebar({
       {/* Header */}
       <div className="p-6 border-b border-glass-200">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gradient-neon">AstroAI</h1>
+          <h1 className="text-2xl font-bold text-gradient-neon">Rastro</h1>
           <button
             onClick={onToggle}
             className="glass p-3 rounded-xl text-glass-300 hover:text-white hover:neon-glow transition-all duration-300 group"

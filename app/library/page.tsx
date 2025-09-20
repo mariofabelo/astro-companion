@@ -18,8 +18,8 @@ export default function LibraryPage() {
       
       <div className="bg-white p-6 rounded-lg shadow">
         <h2 className="text-lg font-semibold mb-4">Upload New Paper</h2>
-        <FileUploader onDone={(paperId) => {
-          console.log('Paper uploaded:', paperId)
+        <FileUploader onPaperProcessed={(paperId, paperData) => {
+          console.log('Paper processed:', paperId, paperData)
           // TODO: Redirect to paper page or refresh list
         }} />
       </div>

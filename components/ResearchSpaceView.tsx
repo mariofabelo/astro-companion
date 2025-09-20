@@ -69,6 +69,12 @@ export default function ResearchSpaceView({
     }
   };
 
+  const handleDeletePaperFromPanel = () => {
+    if (selectedPaper) {
+      handleRemovePaper(selectedPaper.id);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-slate-50 w-full">
       {/* Header */}
@@ -143,6 +149,7 @@ export default function ResearchSpaceView({
                   onPaperClick={handlePaperClick}
                   onPaperSelect={handlePaperSelect}
                   selectedPaper={selectedPaper || undefined}
+                  onDeletePaper={handleRemovePaper}
                 />
               </>
             ) : (
@@ -151,7 +158,7 @@ export default function ResearchSpaceView({
                 onPaperClick={handlePaperClick}
                 onPaperSelect={handlePaperSelect}
                 selectedPaper={selectedPaper || undefined}
-                spaceId={space.id}
+                onDeletePaper={handleRemovePaper}
               />
             )
           ) : (
@@ -174,6 +181,8 @@ export default function ResearchSpaceView({
               paper={selectedPaper}
               onOpenPDF={handleOpenPDF}
               onClose={handleCloseIdentificationPanel}
+              onDeletePaper={handleDeletePaperFromPanel}
+              spaceId={space.id}
             />
           </div>
         )}

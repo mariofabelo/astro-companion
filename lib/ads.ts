@@ -45,10 +45,11 @@ export interface ADSSearchParams {
 }
 
 // Get ADS API token from environment
-function getADSToken(): string {
+function getADSToken(): string | null {
   const token = process.env.ADS_API_TOKEN
   if (!token) {
-    throw new Error('ADS_API_TOKEN environment variable is required')
+    console.warn('ADS_API_TOKEN environment variable is not set. Some features may be limited.')
+    return null
   }
   return token
 }
@@ -57,6 +58,10 @@ function getADSToken(): string {
 export async function searchADSPapers(params: ADSSearchParams): Promise<ADSPaper[]> {
   try {
     const token = getADSToken()
+    
+    if (!token) {
+      throw new Error('ADS API token not configured. Please set ADS_API_TOKEN environment variable.')
+    }
     
     // Default fields to retrieve
     const fields = params.fl || [
@@ -121,6 +126,11 @@ export async function searchADSPapers(params: ADSSearchParams): Promise<ADSPaper
 // Fetch a specific paper by bibcode
 export async function fetchADSPaper(bibcode: string): Promise<ADSPaper | null> {
   try {
+    const token = getADSToken()
+    if (!token) {
+      throw new Error('ADS API token not configured')
+    }
+    
     const results = await searchADSPapers({
       query: `bibcode:${bibcode}`,
       maxResults: 1
@@ -180,12 +190,15 @@ export async function getADSPDFUrl(bibcode: string): Promise<string | null> {
     return constructADSPDFUrl(bibcode)
   }
   
+  console.log(`Attempting to get PDF URL for bibcode: ${bibcode} with token: ${token.substring(0, 10)}...`)
+  
   try {
     // Try to get publisher PDF first, then preprint PDF
     const linkTypes = ['pub_pdf', 'eprint_pdf', 'author_pdf', 'ads_pdf']
     
     for (const linkType of linkTypes) {
       const url = `https://api.adsabs.harvard.edu/v1/resolver/${bibcode}/${linkType}`
+      console.log(`Trying ${linkType} for ${bibcode}: ${url}`)
       
       const response = await fetch(url, {
         headers: {
@@ -194,20 +207,35 @@ export async function getADSPDFUrl(bibcode: string): Promise<string | null> {
         }
       })
       
+      console.log(`Response status for ${linkType}: ${response.status}`)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log(`Response data for ${linkType}:`, data)
         
         // Handle different possible response formats
         if (data.links && Array.isArray(data.links) && data.links.length > 0) {
+          console.log(`Found PDF URL via ${linkType}:`, data.links[0].url)
           return data.links[0].url
         } else if (data.url) {
+          console.log(`Found PDF URL via ${linkType}:`, data.url)
           return data.url
+        } else if (data.link) {
+          console.log(`Found PDF URL via ${linkType}:`, data.link)
+          return data.link
+        } else if (data.service) {
+          console.log(`Found PDF URL via ${linkType}:`, data.service)
+          return data.service
         } else if (typeof data === 'string') {
+          console.log(`Found PDF URL via ${linkType}:`, data)
           return data
         }
+      } else {
+        console.log(`No PDF available for ${linkType}: ${response.status} ${response.statusText}`)
       }
     }
     
+    console.log('No PDF URL found via any link type, using fallback')
     // If no PDF found via API, try fallback
     return constructADSPDFUrl(bibcode)
   } catch (error) {

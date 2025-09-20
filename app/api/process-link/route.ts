@@ -23,47 +23,98 @@ export async function POST(req: NextRequest) {
     let pdfUrl: string | null = null
 
     if (type === 'arxiv') {
-      // Extract ArXiv ID from URL
+      // Extract ArXiv ID from URL - more flexible patterns
       const arxivIdMatch = url.match(/(\d{4}\.\d{4,}(v\d+)?)/)
       if (!arxivIdMatch) {
-        return NextResponse.json({ error: 'Invalid ArXiv URL format' }, { status: 400 })
+        return NextResponse.json({ error: 'Invalid ArXiv URL format. Please provide a valid ArXiv URL or ID.' }, { status: 400 })
       }
       
       const arxivId = arxivIdMatch[1]
+      console.log('Fetching ArXiv paper:', arxivId)
       paperData = await fetchArXivPaper(arxivId)
       
       if (paperData) {
+        // Extract year from published date and add citation count
+        const year = paperData.published ? parseInt(paperData.published.slice(0, 4)) : undefined
+        
+        // Try to get citation count from Semantic Scholar
+        let citationCount = 0
+        try {
+          const { getSemanticScholarPaperByArxivId } = await import('@/lib/semantic-scholar')
+          const semanticPaper = await getSemanticScholarPaperByArxivId(arxivId)
+          citationCount = semanticPaper?.citationCount || 0
+        } catch (error) {
+          console.log('Could not fetch citation count from Semantic Scholar:', error)
+        }
+        
+        // Add year and citation count to paperData
+        paperData = {
+          ...paperData,
+          year,
+          citation_count: citationCount
+        }
+        
         // Construct PDF URL for ArXiv
         pdfUrl = `https://arxiv.org/pdf/${arxivId}.pdf`
+        console.log('ArXiv paper found:', paperData.title, 'Year:', year, 'Citations:', citationCount)
+      } else {
+        console.log('ArXiv paper not found for ID:', arxivId)
       }
     } else if (type === 'ads') {
-      // Extract bibcode from URL
-      const bibcodeMatch = url.match(/([A-Za-z0-9\.]+)/)
-      if (!bibcodeMatch) {
-        return NextResponse.json({ error: 'Invalid ADS URL format' }, { status: 400 })
-      }
+      // Extract bibcode from URL - more specific patterns for ADS URLs
+      let bibcode: string
       
-      const bibcode = bibcodeMatch[1]
-      const adsResult = await fetchADSPaperWithPDF(bibcode)
-      
-      if (adsResult) {
-        paperData = {
-          id: adsResult.bibcode,
-          title: adsResult.title,
-          authors: adsResult.authors,
-          abstract: adsResult.abstract,
-          published: adsResult.pubdate,
-          doi: adsResult.doi,
-          arxiv_id: adsResult.arxiv_id,
-          journal: adsResult.journal,
-          url_html: adsResult.url_html
+      // Try to extract from full ADS URL first
+      const urlMatch = url.match(/\/abs\/([A-Za-z0-9\.]+)/)
+      if (urlMatch) {
+        bibcode = urlMatch[1]
+      } else {
+        // If it's just a bibcode (no URL), validate it directly
+        const bibcodeMatch = url.match(/^([A-Za-z0-9\.]+)$/)
+        if (!bibcodeMatch) {
+          return NextResponse.json({ error: 'Invalid ADS URL format. Please provide a valid ADS URL or bibcode.' }, { status: 400 })
         }
-        pdfUrl = adsResult.url_pdf
+        bibcode = bibcodeMatch[1]
+      }
+      console.log('Fetching ADS paper:', bibcode)
+      
+      try {
+        const adsResult = await fetchADSPaperWithPDF(bibcode)
+        
+        if (adsResult) {
+          paperData = {
+            id: adsResult.bibcode,
+            title: adsResult.title,
+            authors: adsResult.authors,
+            abstract: adsResult.abstract,
+            published: adsResult.pubdate,
+            doi: adsResult.doi,
+            arxiv_id: adsResult.arxiv_id,
+            journal: adsResult.journal,
+            url_html: adsResult.url_html,
+            year: adsResult.year,
+            citation_count: adsResult.citation_count
+          }
+          pdfUrl = adsResult.url_pdf || null
+          console.log('ADS paper found:', paperData.title)
+        } else {
+          console.log('ADS paper not found for bibcode:', bibcode)
+        }
+      } catch (error) {
+        console.error('ADS fetch error:', error)
+        if (error instanceof Error && error.message.includes('ADS API token')) {
+          return NextResponse.json({ error: 'ADS API token not configured. Please contact the administrator.' }, { status: 503 })
+        }
+        // Re-throw the error to be handled by the outer catch block
+        throw error
       }
     }
 
     if (!paperData) {
-      return NextResponse.json({ error: 'Could not fetch paper data' }, { status: 404 })
+      const errorMessage = type === 'arxiv' 
+        ? 'Could not find the ArXiv paper. Please check the URL and try again.'
+        : 'Could not find the ADS paper. Please check the URL and try again.'
+      return NextResponse.json({ error: errorMessage }, { status: 404 })
     }
 
     // Generate unique paper ID
@@ -97,21 +148,30 @@ export async function POST(req: NextRequest) {
     }
 
     // Save paper metadata to database
-    const { error: insertError } = await sb.from('papers').insert({
+    // Map the data to the existing schema
+    const paperRecord = {
       id: paperId,
       owner: user.id,
       title: paperData.title,
-      authors: paperData.authors,
-      abstract: paperData.abstract,
-      published: paperData.published,
       doi: paperData.doi,
       arxiv_id: paperData.arxiv_id,
-      journal: paperData.journal,
-      url_html: paperData.url_html,
+      ads_bibcode: type === 'ads' ? paperData.id : null,
       pdf_path: pdfPath,
-      source_type: type,
-      source_url: url
-    })
+      csl: {
+        type: 'article-journal',
+        title: paperData.title,
+        author: paperData.authors?.map((author: string) => ({ family: author, given: '' })) || [],
+        abstract: paperData.abstract,
+        issued: paperData.published ? { 'date-parts': [[paperData.published.slice(0, 4)]] } : undefined,
+        'container-title': paperData.journal,
+        DOI: paperData.doi,
+        URL: paperData.url_html,
+        source: type,
+        source_url: url
+      }
+    }
+
+    const { error: insertError } = await sb.from('papers').insert(paperRecord)
 
     if (insertError) {
       console.error('Database insert error:', insertError)
@@ -147,3 +207,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
+

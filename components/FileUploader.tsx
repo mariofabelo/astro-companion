@@ -2,18 +2,33 @@
 
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import PaperUploadPreview from './PaperUploadPreview';
+import { Paper } from '@/types/paper';
+import { ResearchSpace } from '@/lib/research-spaces';
 
 interface FileUploaderProps {
   onFilesUploaded?: (files: File[]) => void;
+  onPaperProcessed?: (paperId: string, paperData: any) => void;
+  researchSpaces?: ResearchSpace[];
+  onAddToSpace?: (papers: Paper[], spaceId: string) => void;
+  onCreateNewSpace?: (papers: Paper[], spaceTitle: string) => void;
 }
 
-export default function FileUploader({ onFilesUploaded }: FileUploaderProps) {
+export default function FileUploader({ 
+  onFilesUploaded, 
+  onPaperProcessed, 
+  researchSpaces = [], 
+  onAddToSpace, 
+  onCreateNewSpace 
+}: FileUploaderProps) {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [linkInput, setLinkInput] = useState('');
   const [isProcessingLink, setIsProcessingLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [processedPaper, setProcessedPaper] = useState<Paper | null>(null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const pdfFiles = acceptedFiles.filter(file => file.type === 'application/pdf');
@@ -57,17 +72,20 @@ export default function FileUploader({ onFilesUploaded }: FileUploaderProps) {
   };
 
   const validateLink = (url: string): { isValid: boolean; type: 'arxiv' | 'ads' | 'unknown' } => {
-    // ArXiv URL patterns
+    // ArXiv URL patterns - more comprehensive
     const arxivPatterns = [
       /^https?:\/\/arxiv\.org\/abs\/(\d{4}\.\d{4,}(v\d+)?)$/,
       /^https?:\/\/arxiv\.org\/pdf\/(\d{4}\.\d{4,}(v\d+)?)\.pdf$/,
+      /^https?:\/\/arxiv\.org\/e-print\/(\d{4}\.\d{4,}(v\d+)?)$/,
       /^(\d{4}\.\d{4,}(v\d+)?)$/ // Just the ID
     ];
 
-    // ADS URL patterns
+    // ADS URL patterns - more comprehensive
     const adsPatterns = [
-      /^https?:\/\/ui\.adsabs\.harvard\.edu\/abs\/([^\/]+)/,
-      /^https?:\/\/adsabs\.harvard\.edu\/abs\/([^\/]+)/,
+      /^https?:\/\/ui\.adsabs\.harvard\.edu\/abs\/([^\/\?]+)/,
+      /^https?:\/\/adsabs\.harvard\.edu\/abs\/([^\/\?]+)/,
+      /^https?:\/\/ui\.adsabs\.harvard\.edu\/link\/([^\/\?]+)/,
+      /^https?:\/\/adsabs\.harvard\.edu\/link\/([^\/\?]+)/,
       /^([A-Za-z0-9\.]+)$/ // Just the bibcode
     ];
 
@@ -95,7 +113,7 @@ export default function FileUploader({ onFilesUploaded }: FileUploaderProps) {
 
     const validation = validateLink(linkInput.trim());
     if (!validation.isValid) {
-      setLinkError('Please enter a valid ArXiv or ADS link');
+      setLinkError('Please enter a valid ArXiv or ADS link. Examples:\n• ArXiv: https://arxiv.org/abs/2301.00001\n• ADS: https://ui.adsabs.harvard.edu/abs/2023ApJ...950L..20M');
       return;
     }
 
@@ -120,23 +138,73 @@ export default function FileUploader({ onFilesUploaded }: FileUploaderProps) {
       const result = await response.json();
       console.log('Link processed successfully:', result);
       
-      // Show success message
-      setLinkSuccess(`Paper "${result.paper?.title || 'Unknown'}" has been added to your library!`);
+      // Convert the result to a Paper object for preview
+      const paper: Paper = {
+        id: result.paperId,
+        source: validation.type as 'arXiv' | 'ads',
+        title: result.paper?.title || 'Unknown Title',
+        authors: result.paper?.authors || [],
+        abstract: result.paper?.abstract || '',
+        publishedDate: result.paper?.published || '',
+        journal: result.paper?.journal || '',
+        doi: result.paper?.doi || '',
+        arxivId: result.paper?.arxiv_id || '',
+        url_html: result.paper?.url_html || '',
+        url_pdf: result.hasPdf ? `${result.paperId}.pdf` : undefined,
+        year: result.paper?.year,
+        citations: result.paper?.citation_count
+      };
       
-      // Clear the input after a delay
-      setTimeout(() => {
-        setLinkInput('');
-        setLinkSuccess(null);
-      }, 3000);
+      // Show preview modal
+      setProcessedPaper(paper);
+      setShowPreview(true);
       
-      // TODO: Handle the processed paper (add to uploaded files or trigger callback)
+      // Call the callback if provided
+      if (onPaperProcessed && result.paperId) {
+        onPaperProcessed(result.paperId, result.paper);
+      }
+      
+      // Clear the input
+      setLinkInput('');
       
     } catch (error) {
       console.error('Link processing failed:', error);
-      setLinkError(error instanceof Error ? error.message : 'Failed to process link. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process link. Please try again.';
+      
+      // Provide more specific error messages
+      if (errorMessage.includes('ADS_API_TOKEN')) {
+        setLinkError('ADS API token not configured. Please contact the administrator.');
+      } else if (errorMessage.includes('Could not fetch paper data')) {
+        setLinkError('Could not find the paper. Please check the URL and try again.');
+      } else if (errorMessage.includes('Invalid')) {
+        setLinkError('Invalid URL format. Please check the link and try again.');
+      } else {
+        setLinkError(errorMessage);
+      }
     } finally {
       setIsProcessingLink(false);
     }
+  };
+
+  const handleAddToSpace = (papers: Paper[], spaceId: string) => {
+    if (onAddToSpace) {
+      onAddToSpace(papers, spaceId);
+    }
+    setShowPreview(false);
+    setProcessedPaper(null);
+  };
+
+  const handleCreateNewSpace = (papers: Paper[], spaceTitle: string) => {
+    if (onCreateNewSpace) {
+      onCreateNewSpace(papers, spaceTitle);
+    }
+    setShowPreview(false);
+    setProcessedPaper(null);
+  };
+
+  const handleClosePreview = () => {
+    setShowPreview(false);
+    setProcessedPaper(null);
   };
 
   return (
@@ -315,6 +383,17 @@ export default function FileUploader({ onFilesUploaded }: FileUploaderProps) {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Paper Upload Preview Modal */}
+      {showPreview && processedPaper && (
+        <PaperUploadPreview
+          paper={processedPaper}
+          researchSpaces={researchSpaces}
+          onAddToSpace={handleAddToSpace}
+          onCreateNewSpace={handleCreateNewSpace}
+          onClose={handleClosePreview}
+        />
       )}
 
     </div>

@@ -85,3 +85,4 @@ export function renderLatexExpression(latex: string, displayMode: boolean = fals
     return `$${latex}$`; // Return original expression if rendering fails
   }
 }
+

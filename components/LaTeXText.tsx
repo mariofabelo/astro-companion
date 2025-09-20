@@ -5,7 +5,7 @@ import { renderLatexInText } from '@/lib/latex';
 interface LaTeXTextProps {
   text: string;
   className?: string;
-  as?: keyof JSX.IntrinsicElements;
+  as?: keyof React.JSX.IntrinsicElements;
 }
 
 /**
@@ -28,3 +28,4 @@ export default function LaTeXText({
     />
   );
 }
+

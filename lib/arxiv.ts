@@ -39,7 +39,7 @@ export async function fetchArXivPaper(arxivId: string): Promise<ArXivPaper | nul
     // Clean the ArXiv ID (remove version suffix if present)
     const cleanId = arxivId.split('v')[0]
     
-    const url = `http://export.arxiv.org/api/query?id_list=${cleanId}`
+    const url = `https://export.arxiv.org/api/query?id_list=${cleanId}`
     const response = await fetch(url)
     
     if (!response.ok) {
