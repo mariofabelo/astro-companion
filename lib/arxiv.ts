@@ -49,8 +49,8 @@ export async function fetchArXivPaper(arxivId: string): Promise<ArXivPaper | nul
     const xmlText = await response.text()
     
     // Simple XML parsing using regex (since we're in Node.js environment)
-    // Check if we have results
-    const totalResultsMatch = xmlText.match(/<opensearch:totalResults>(\d+)<\/opensearch:totalResults>/)
+    // Check if we have results - handle namespace attributes
+    const totalResultsMatch = xmlText.match(/<opensearch:totalResults[^>]*>(\d+)<\/opensearch:totalResults>/)
     if (!totalResultsMatch || totalResultsMatch[1] === '0') {
       return null
     }

@@ -1,5 +1,6 @@
 import { createSupabaseBrowser } from './supabase-client';
 import { Paper } from '@/types/paper';
+import { normalizePaper } from './paper-utils';
 
 export interface ResearchSpace {
   id: string;
@@ -46,7 +47,7 @@ export class ResearchSpacesService {
       title: space.title,
       description: space.description,
       timestamp: new Date(space.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      papers: space.papers || [],
+      papers: (space.papers || []).map((paper: Paper) => normalizePaper(paper)),
       created_at: space.created_at,
       updated_at: space.updated_at
     }));
@@ -61,13 +62,15 @@ export class ResearchSpacesService {
 
     console.log('Creating space in database:', { title, description, papersCount: papers.length, papers });
 
+    const normalizedPapers = papers.map(normalizePaper);
+
     const { data, error } = await this.supabase
       .from('research_spaces')
       .insert({
         owner: user.id,
         title,
         description,
-        papers
+        papers: normalizedPapers
       })
       .select()
       .single();
@@ -97,12 +100,15 @@ export class ResearchSpacesService {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) return null;
 
+    const updatePayload = {
+      ...updates,
+      ...(updates.papers ? { papers: updates.papers.map(normalizePaper) } : {}),
+      updated_at: new Date().toISOString()
+    };
+
     const { data, error } = await this.supabase
       .from('research_spaces')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', id)
       .eq('owner', user.id)
       .select()

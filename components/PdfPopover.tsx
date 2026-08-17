@@ -21,16 +21,63 @@ export default function PdfPopover({ paper, isOpen, onClose }: PdfPopoverProps) 
 
   // Set PDF URL for papers
   useEffect(() => {
-    if (isOpen && paper) {
-      if (paper.source === 'ads' && paper.id.startsWith('ads:')) {
-        // For ADS papers, use the abstract page which has PDF links
-        const bibcode = paper.id.replace('ads:', '');
-        setPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
-      } else {
-        // For non-ADS papers, use existing logic
-        setPdfUrl(paper.url_pdf || '');
+    const setPdfUrlForPaper = async () => {
+      if (isOpen && paper) {
+        if (paper.source === 'ads' && paper.id.startsWith('ads:')) {
+          console.log('🎯 PDFPOPOVER - PROCESSING ADS PAPER 🎯');
+          const bibcode = paper.id.replace('ads:', '');
+          console.log('📋 PDFPOPOVER - EXTRACTED BIBCODE:', bibcode);
+          
+          // Validate bibcode format before making API call
+          const isValidBibcode = /^\d{4}[A-Za-z]+[.\d]*[A-Za-z]/.test(bibcode);
+          console.log('✅ PDFPOPOVER - BIBCODE VALID:', isValidBibcode);
+          
+          if (!isValidBibcode) {
+            console.log(`❌ PDFPOPOVER - Invalid bibcode format: ${bibcode} - using abstract page directly`);
+            setPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
+            return;
+          }
+          
+          try {
+            console.log('🌐 PDFPOPOVER - MAKING API CALL FOR PDF URL 🌐');
+            console.log(`📞 PDFPOPOVER - API URL: /api/ads/pdf-url?bibcode=${encodeURIComponent(bibcode)}`);
+            const response = await fetch(`/api/ads/pdf-url?bibcode=${encodeURIComponent(bibcode)}`);
+            console.log('📡 PDFPOPOVER - API RESPONSE STATUS:', response.status);
+            console.log('✅ PDFPOPOVER - API RESPONSE OK:', response.ok);
+            
+            if (response.ok) {
+              const data = await response.json();
+              console.log('📦 PDFPOPOVER - API RESPONSE DATA:', data);
+              console.log('🎯 PDFPOPOVER - DATA.SUCCESS:', data.success);
+              console.log('🔗 PDFPOPOVER - DATA.PDFURL:', data.pdfUrl);
+              
+              if (data.success && data.pdfUrl) {
+                console.log('🎉 PDFPOPOVER - SUCCESS! Using resolved PDF URL:', data.pdfUrl);
+                setPdfUrl(data.pdfUrl);
+                return;
+              } else {
+                console.log('❌ PDFPOPOVER - API FAILED TO RESOLVE PDF URL');
+                console.log('🔍 PDFPOPOVER - ERROR:', data.error || 'Unknown error');
+              }
+            } else {
+              console.log('❌ PDFPOPOVER - API RESPONSE NOT OK:', response.status, response.statusText);
+            }
+            console.log('🔄 PDFPOPOVER - Falling back to abstract page');
+            // Fallback to abstract page if no PDF URL found
+            setPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
+          } catch (error) {
+            console.error('💥 PDFPOPOVER - Error getting ADS PDF URL:', error);
+            // Fallback to abstract page
+            setPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
+          }
+        } else {
+          // For non-ADS papers, use existing logic
+          setPdfUrl(paper.url_pdf || '');
+        }
       }
-    }
+    };
+
+    setPdfUrlForPaper();
   }, [isOpen, paper]);
 
   useEffect(() => {

@@ -5,6 +5,7 @@ import { Paper } from '@/types/paper';
 import LaTeXText from './LaTeXText';
 import { IoWarning } from 'react-icons/io5';
 import { downloadPaper } from '@/lib/download';
+import { isArxivSource, resolvePaperUrls } from '@/lib/paper-utils';
 
 interface PaperNode {
   id: string;
@@ -60,7 +61,8 @@ export default function PaperCanvas({
       await downloadPaper(paper);
     } catch (error) {
       console.error('Failed to download paper:', error);
-      // You could add a toast notification here
+      // Show user-friendly error message
+      alert(`Failed to download paper: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -353,11 +355,11 @@ export default function PaperCanvas({
                       className="text-sm font-semibold text-slate-900 line-clamp-2 leading-tight"
                     />
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ml-2 flex-shrink-0 ${
-                      node.paper.source === 'arXiv' 
+                      isArxivSource(node.paper.source)
                         ? 'bg-orange-100 text-orange-700'
                         : 'bg-blue-100 text-blue-700'
                     }`}>
-                      {node.paper.source}
+                      {isArxivSource(node.paper.source) ? 'arXiv' : node.paper.source}
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 line-clamp-1">
@@ -390,7 +392,7 @@ export default function PaperCanvas({
                       )}
                     </div>
                     <div className="flex items-center gap-1">
-                      {node.paper.url_pdf && (
+                      {(resolvePaperUrls(node.paper).url_pdf || node.paper.source === 'ads') && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

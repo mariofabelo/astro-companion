@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Paper } from '@/types/paper';
 import { ResearchSpace } from '@/lib/research-spaces';
+import LaTeXText from './LaTeXText';
 
 interface PaperUploadPreviewProps {
   paper: Paper;
@@ -78,9 +79,11 @@ export default function PaperUploadPreview({
 
               {/* Paper Details */}
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-slate-900 mb-2 line-clamp-2">
-                  {paper.title}
-                </h3>
+                <LaTeXText 
+                  text={paper.title}
+                  as="h3"
+                  className="text-lg font-semibold text-slate-900 mb-2 line-clamp-2"
+                />
                 
                 {paper.authors && paper.authors.length > 0 && (
                   <p className="text-sm text-slate-600 mb-2">
@@ -90,9 +93,11 @@ export default function PaperUploadPreview({
                 )}
 
                 {paper.abstract && (
-                  <p className="text-sm text-slate-700 mb-3 line-clamp-3">
-                    {paper.abstract}
-                  </p>
+                  <LaTeXText 
+                    text={paper.abstract}
+                    as="p"
+                    className="text-sm text-slate-700 mb-3 line-clamp-3"
+                  />
                 )}
 
                 {/* Metadata */}
@@ -102,7 +107,7 @@ export default function PaperUploadPreview({
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      {paper.publishedDate}
+                      {new Date(paper.publishedDate).toLocaleDateString()}
                     </span>
                   )}
                   {paper.journal && (

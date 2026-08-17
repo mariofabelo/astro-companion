@@ -39,13 +39,13 @@ export default function ResultCard({ paper, isSelected, onToggleSelect }: Result
           <div className="flex flex-wrap gap-2">
             {/* Source badge */}
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              paper.source === 'arXiv' 
+              paper.source === 'arXiv' || paper.source === 'arxiv'
                 ? 'bg-orange-100 text-orange-700'
                 : paper.source === 'ads'
                 ? 'bg-blue-100 text-blue-700'
                 : 'bg-gray-100 text-gray-700'
             }`}>
-              {paper.source.toUpperCase()}
+              {paper.source === 'arxiv' ? 'arXiv' : paper.source.toUpperCase()}
             </span>
 
             {/* Year badge */}

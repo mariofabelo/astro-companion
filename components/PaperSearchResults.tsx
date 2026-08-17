@@ -219,7 +219,7 @@ export default function PaperSearchResults({
 
         {/* Space Selector Modal */}
         {showSpaceSelector && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-60 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-none z-60 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
               <h3 className="text-xl font-bold text-slate-900 mb-4">Add to Space</h3>
               <p className="text-slate-600 mb-6">
@@ -262,7 +262,7 @@ export default function PaperSearchResults({
 
         {/* Create New Space Modal */}
         {showCreateSpace && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-60 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-none z-60 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
               <h3 className="text-xl font-bold text-slate-900 mb-4">Create New Space</h3>
               <p className="text-slate-600 mb-6">

@@ -5,6 +5,7 @@ import { Paper } from '@/types/paper';
 import LaTeXText from './LaTeXText';
 import { generateSummariesForPapers } from '@/lib/summaries';
 import { downloadPaper } from '@/lib/download';
+import { isArxivSource, resolvePaperUrls } from '@/lib/paper-utils';
 
 interface PaperIdentificationPanelProps {
   paper: Paper;
@@ -26,20 +27,94 @@ export default function PaperIdentificationPanel({
   const [showAISummary, setShowAISummary] = useState(false);
   const [aiSummary, setAiSummary] = useState<string>('');
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [isArxivFallback, setIsArxivFallback] = useState(false);
+  const [arxivFallbackPaper, setArxivFallbackPaper] = useState<any>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   // Set PDF URL for papers
   useEffect(() => {
-    if (paper.source === 'ads' && paper.id.startsWith('ads:')) {
-      // For ADS papers, use the abstract page which has PDF links
-      const bibcode = paper.id.replace('ads:', '');
-      setResolvedPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
-    } else {
-      // For non-ADS papers, use existing logic
-      setResolvedPdfUrl(paper.url_pdf || '');
-    }
+    const setPdfUrlForPaper = async () => {
+      if (paper.source === 'ads' && paper.id.startsWith('ads:')) {
+        console.log('🎯 PAPERIDENTIFICATION - PROCESSING ADS PAPER 🎯');
+        const bibcode = paper.id.replace('ads:', '');
+        console.log('📋 PAPERIDENTIFICATION - EXTRACTED BIBCODE:', bibcode);
+        
+        // Validate bibcode format before making API call
+        const isValidBibcode = /^\d{4}[A-Za-z]+[.\d]*[A-Za-z]/.test(bibcode);
+        console.log('✅ PAPERIDENTIFICATION - BIBCODE VALID:', isValidBibcode);
+        
+        if (!isValidBibcode) {
+          console.log(`❌ PAPERIDENTIFICATION - Invalid bibcode format: ${bibcode} - using abstract page directly`);
+          setResolvedPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
+          return;
+        }
+        
+        setPdfLoading(true);
+        try {
+          console.log('🌐 PAPERIDENTIFICATION - MAKING API CALL FOR PDF URL 🌐');
+          console.log(`📞 PAPERIDENTIFICATION - API URL: /api/ads/pdf-url?bibcode=${encodeURIComponent(bibcode)}`);
+          const response = await fetch(`/api/ads/pdf-url?bibcode=${encodeURIComponent(bibcode)}`);
+          console.log('📡 PAPERIDENTIFICATION - API RESPONSE STATUS:', response.status);
+          console.log('✅ PAPERIDENTIFICATION - API RESPONSE OK:', response.ok);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('📦 PAPERIDENTIFICATION - API RESPONSE DATA:', data);
+            console.log('🎯 PAPERIDENTIFICATION - DATA.SUCCESS:', data.success);
+            console.log('🔗 PAPERIDENTIFICATION - DATA.PDFURL:', data.pdfUrl);
+            console.log('🔄 PAPERIDENTIFICATION - DATA.FALLBACK_TO_ARXIV:', data.fallbackToArxiv);
+            
+            if (data.success && data.pdfUrl) {
+              console.log('🎉 PAPERIDENTIFICATION - SUCCESS! Using resolved PDF URL:', data.pdfUrl);
+              setResolvedPdfUrl(data.pdfUrl);
+              
+              // Check if this is an arXiv paper (now prioritized)
+              if (data.fallbackToArxiv && data.arxivPaper) {
+                console.log('📚 PAPERIDENTIFICATION - Using arXiv paper (prioritized):', data.arxivPaper.title);
+                setIsArxivFallback(true);
+                setArxivFallbackPaper(data.arxivPaper);
+              } else {
+                console.log('📄 PAPERIDENTIFICATION - Using ADS PDF (no arXiv available)');
+                setIsArxivFallback(false);
+                setArxivFallbackPaper(null);
+              }
+              return;
+            } else {
+              console.log('❌ PAPERIDENTIFICATION - API FAILED TO RESOLVE PDF URL');
+              console.log('🔍 PAPERIDENTIFICATION - ERROR:', data.error || 'Unknown error');
+            }
+          } else {
+            console.log('❌ PAPERIDENTIFICATION - API RESPONSE NOT OK:', response.status, response.statusText);
+          }
+          console.log('🔄 PAPERIDENTIFICATION - Falling back to abstract page');
+          // Fallback to abstract page if no PDF URL found
+          setResolvedPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
+          setIsArxivFallback(false);
+          setArxivFallbackPaper(null);
+        } catch (error) {
+          console.error('💥 PAPERIDENTIFICATION - Error getting ADS PDF URL:', error);
+          // Fallback to abstract page
+          setResolvedPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
+          setIsArxivFallback(false);
+          setArxivFallbackPaper(null);
+        } finally {
+          setPdfLoading(false);
+        }
+      } else {
+        // For arXiv and other non-ADS papers, resolve URLs
+        const urls = resolvePaperUrls(paper);
+        setResolvedPdfUrl(urls.url_pdf || '');
+        setIsArxivFallback(false);
+        setArxivFallbackPaper(null);
+      }
+    };
+
+    setPdfUrlForPaper();
   }, [paper.id, paper.source, paper.url_pdf]);
   const handleExternalLink = (url: string) => {
-    window.open(url, '_blank', 'noopener,noreferrer');
+    const resolvedUrl = url || resolvePaperUrls(paper).url_html;
+    if (!resolvedUrl) return;
+    window.open(resolvedUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleDeletePaper = () => {
@@ -75,7 +150,13 @@ export default function PaperIdentificationPanel({
       await downloadPaper(paper);
     } catch (error) {
       console.error('Failed to download paper:', error);
-      // You could add a toast notification here
+      // Show user-friendly error message with helpful guidance
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const additionalGuidance = paper.source === 'ads' 
+        ? '\n\nAlternative options:\n1. Try opening the abstract page to access PDF links directly\n2. Check if your institution has access to this journal\n3. Look for preprint versions on arXiv if available'
+        : '\n\nTry opening the paper in a new tab to access the PDF directly.';
+      
+      alert(`Failed to download paper: ${errorMessage}${additionalGuidance}`);
     }
   };
 
@@ -97,12 +178,20 @@ export default function PaperIdentificationPanel({
         
         <div className="flex items-center gap-2">
           <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-            paper.source === 'arXiv' 
+            isArxivSource(paper.source)
               ? 'bg-orange-100 text-orange-700'
               : 'bg-blue-100 text-blue-700'
           }`}>
-            {paper.source}
+            {isArxivSource(paper.source) ? 'arXiv' : paper.source}
           </span>
+          {isArxivFallback && (
+            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700 flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              arXiv PDF
+            </span>
+          )}
           {paper.year && (
             <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-600">
               {paper.year}
@@ -122,6 +211,31 @@ export default function PaperIdentificationPanel({
             className="text-lg font-bold text-slate-900 leading-tight"
           />
         </div>
+
+        {/* arXiv Fallback Notice */}
+        {isArxivFallback && arxivFallbackPaper && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <div className="p-1 bg-green-100 rounded-lg">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-green-800 mb-1">arXiv PDF (Prioritized)</h4>
+                <p className="text-sm text-green-700 mb-2">
+                  We found an arXiv version of this paper, which provides more reliable access than the publisher PDF.
+                </p>
+                <div className="text-xs text-green-600">
+                  <p><strong>arXiv Title:</strong> {arxivFallbackPaper.title}</p>
+                  {arxivFallbackPaper.authors && arxivFallbackPaper.authors.length > 0 && (
+                    <p><strong>Authors:</strong> {arxivFallbackPaper.authors.slice(0, 3).join(', ')}{arxivFallbackPaper.authors.length > 3 ? ' et al.' : ''}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Authors */}
         <div>
@@ -202,15 +316,20 @@ export default function PaperIdentificationPanel({
       <div className="p-4 border-t border-slate-200 space-y-3">
         <button
           onClick={onOpenPDF}
-          className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2"
+          disabled={pdfLoading}
+          className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-          Open PDF
+          {pdfLoading ? (
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          )}
+          {pdfLoading ? 'Loading PDF...' : 'Open PDF'}
         </button>
 
-        {paper.url_pdf && (
+        {(resolvePaperUrls(paper).url_pdf || paper.source === 'ads') && (
           <button
             onClick={handleDownloadPaper}
             className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold py-3 px-4 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg shadow-green-500/25 flex items-center justify-center gap-2"
@@ -219,6 +338,18 @@ export default function PaperIdentificationPanel({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             Download PDF
+          </button>
+        )}
+
+        {paper.source === 'ads' && (
+          <button
+            onClick={() => handleExternalLink(paper.url_html)}
+            className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all duration-200 shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            Open Abstract Page
           </button>
         )}
 

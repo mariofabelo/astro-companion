@@ -40,6 +40,7 @@ export default function MainPage() {
   const [renameValue, setRenameValue] = useState('');
   const [spaceToRename, setSpaceToRename] = useState<ResearchSpace | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<ResearchSpace | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createSupabaseBrowser();
 
@@ -146,6 +147,14 @@ export default function MainPage() {
     setViewMode('space');
   };
 
+  const showSuccessMessage = (message: string) => {
+    setSuccessMessage(message);
+    // Auto-hide after 4 seconds
+    setTimeout(() => {
+      setSuccessMessage(null);
+    }, 4000);
+  };
+
   const handleAddToSpace = async (papers: Paper[], spaceId: string) => {
     try {
       // Find the space to update
@@ -175,6 +184,13 @@ export default function MainPage() {
         if (currentSpace?.id === spaceId) {
           setCurrentSpace(updatedSpace);
         }
+
+        // Show success message
+        const paperCount = newPapers.length;
+        const spaceName = spaceToUpdate.title;
+        showSuccessMessage(
+          `Successfully added ${paperCount} paper${paperCount !== 1 ? 's' : ''} to "${spaceName}"`
+        );
       }
     } catch (error) {
       console.error('Error adding papers to space:', error);
@@ -200,6 +216,20 @@ export default function MainPage() {
           setCurrentSpace(updatedSpace);
         }
       }
+
+      // Show success message for fallback case
+      const spaceToUpdate = researchSpaces.find(space => space.id === spaceId);
+      if (spaceToUpdate) {
+        const newPapers = papers.filter(paper => 
+          !spaceToUpdate.papers.some(p => p.id === paper.id)
+        );
+        const paperCount = newPapers.length;
+        if (paperCount > 0) {
+          showSuccessMessage(
+            `Successfully added ${paperCount} paper${paperCount !== 1 ? 's' : ''} to "${spaceToUpdate.title}"`
+          );
+        }
+      }
     }
   };
 
@@ -220,6 +250,12 @@ export default function MainPage() {
         setCurrentSpace(newSpace);
         setViewMode('space');
         console.log('Updated state with new space:', newSpace);
+        
+        // Show success message
+        const paperCount = papers.length;
+        showSuccessMessage(
+          `Successfully created "${spaceTitle}" with ${paperCount} paper${paperCount !== 1 ? 's' : ''}`
+        );
       } else {
         console.error('Failed to create space - newSpace is null');
       }
@@ -237,6 +273,12 @@ export default function MainPage() {
       setResearchSpaces(prev => [fallbackSpace, ...prev]);
       setCurrentSpace(fallbackSpace);
       setViewMode('space');
+      
+      // Show success message for fallback case
+      const paperCount = papers.length;
+      showSuccessMessage(
+        `Successfully created "${spaceTitle}" with ${paperCount} paper${paperCount !== 1 ? 's' : ''}`
+      );
     }
   };
 
@@ -841,7 +883,7 @@ export default function MainPage() {
 
       {/* Add New Papers Modal */}
       {showAddPapersModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-none z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -1005,7 +1047,7 @@ export default function MainPage() {
             </div>
             
             <p className="text-slate-700 mb-6">
-              Are you sure you want to delete "{showDeleteConfirm.title}"? 
+              Are you sure you want to delete &quot;{showDeleteConfirm.title}&quot;? 
               This will permanently remove the research space and all its papers from your account.
             </p>
             
@@ -1021,6 +1063,28 @@ export default function MainPage() {
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Delete Space
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="bg-green-50 border border-green-200 rounded-lg shadow-lg p-4 max-w-sm">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm text-green-700 font-medium">{successMessage}</p>
+              <button
+                onClick={() => setSuccessMessage(null)}
+                className="ml-3 p-1 text-green-400 hover:text-green-600 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
           </div>

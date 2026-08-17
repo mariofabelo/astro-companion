@@ -296,11 +296,11 @@ export default function ChatLLMInterface({
                 />
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    paper.source === 'arXiv' 
+                    paper.source === 'arXiv' || paper.source === 'arxiv'
                       ? 'bg-orange-100 text-orange-700'
                       : 'bg-blue-100 text-blue-700'
                   }`}>
-                    {paper.source}
+                    {paper.source === 'arxiv' ? 'arXiv' : paper.source}
                   </span>
                   {paper.year && (
                     <span className="px-2 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">

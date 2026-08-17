@@ -11,16 +11,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'URL and type are required' }, { status: 400 })
     }
 
-    const sb = await supabaseServer()
-    
-    // Get current user
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     let paperData: any = null
     let pdfUrl: string | null = null
+    let user: any = null
+    let sb: any = null
+
+    // For arXiv papers, we don't need authentication (like search feature)
+    // For ADS papers, we still require authentication
+    if (type === 'ads') {
+      sb = await supabaseServer()
+      // Get current user for ADS papers
+      const { data: { user: authUser } } = await sb.auth.getUser()
+      if (!authUser) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      user = authUser
+    }
 
     if (type === 'arxiv') {
       // Extract ArXiv ID from URL - more flexible patterns
@@ -51,11 +57,11 @@ export async function POST(req: NextRequest) {
         paperData = {
           ...paperData,
           year,
-          citation_count: citationCount
+          citation_count: citationCount,
+          url_html: `https://arxiv.org/abs/${arxivId}`,
+          url_pdf: `https://arxiv.org/pdf/${arxivId}.pdf`,
         }
-        
-        // Construct PDF URL for ArXiv
-        pdfUrl = `https://arxiv.org/pdf/${arxivId}.pdf`
+        pdfUrl = paperData.url_pdf
         console.log('ArXiv paper found:', paperData.title, 'Year:', year, 'Citations:', citationCount)
       } else {
         console.log('ArXiv paper not found for ID:', arxivId)
@@ -117,7 +123,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: errorMessage }, { status: 404 })
     }
 
-    // Generate unique paper ID
+    // For arXiv papers without authentication, just return the paper data
+    if (type === 'arxiv' && !user) {
+      return NextResponse.json({ 
+        success: true, 
+        paperId: paperData.id, // Use arXiv ID as paper ID
+        paper: paperData,
+        hasPdf: !!pdfUrl,
+        message: 'ArXiv paper processed successfully (no database storage without authentication)'
+      })
+    }
+
+    // Generate unique paper ID for authenticated users
     const paperId = crypto.randomUUID()
     
     // Download PDF if available
@@ -147,8 +164,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Save paper metadata to database
-    // Map the data to the existing schema
+    // Save paper metadata to database (only for authenticated users)
     const paperRecord = {
       id: paperId,
       owner: user.id,

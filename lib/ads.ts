@@ -149,8 +149,8 @@ export async function fetchADSPaperWithPDF(bibcode: string): Promise<ADSPaper | 
     const paper = await fetchADSPaper(bibcode)
     if (!paper) return null
     
-    // Get proper PDF URL using resolver API
-    const pdfUrl = await getADSPDFUrl(bibcode)
+    // Get proper PDF URL using enhanced resolver API
+    const pdfUrl = await getADSPDFUrlEnhanced(bibcode)
     
     return {
       ...paper,
@@ -216,10 +216,25 @@ export async function getADSPDFUrl(bibcode: string): Promise<string | null> {
         // Handle different possible response formats
         if (data.links && Array.isArray(data.links) && data.links.length > 0) {
           console.log(`Found PDF URL via ${linkType}:`, data.links[0].url)
-          return data.links[0].url
+          // Check if this is a direct publisher URL that might have access issues
+          const foundUrl = data.links[0].url
+          if (foundUrl && !foundUrl.includes('adsabs.harvard.edu') && !foundUrl.includes('arxiv.org')) {
+            // This is likely a direct publisher URL that might have access restrictions
+            // Return the ADS gateway URL instead for better access
+            const gatewayUrl = `https://ui.adsabs.harvard.edu/link_gateway/${bibcode}/PUB_PDF`
+            console.log(`Converting direct publisher URL to ADS gateway URL: ${gatewayUrl}`)
+            return gatewayUrl
+          }
+          return foundUrl
         } else if (data.url) {
           console.log(`Found PDF URL via ${linkType}:`, data.url)
-          return data.url
+          const foundUrl = data.url
+          if (foundUrl && !foundUrl.includes('adsabs.harvard.edu') && !foundUrl.includes('arxiv.org')) {
+            const gatewayUrl = `https://ui.adsabs.harvard.edu/link_gateway/${bibcode}/PUB_PDF`
+            console.log(`Converting direct publisher URL to ADS gateway URL: ${gatewayUrl}`)
+            return gatewayUrl
+          }
+          return foundUrl
         } else if (data.link) {
           console.log(`Found PDF URL via ${linkType}:`, data.link)
           return data.link
@@ -243,6 +258,92 @@ export async function getADSPDFUrl(bibcode: string): Promise<string | null> {
     
     // Fallback: try to construct PDF URL directly
     return constructADSPDFUrl(bibcode)
+  }
+}
+
+// Enhanced function to get PDF URL with multiple fallback strategies
+export async function getADSPDFUrlEnhanced(bibcode: string): Promise<string | null> {
+  try {
+    // First try the standard API approach
+    const apiUrl = await getADSPDFUrl(bibcode)
+    if (apiUrl) {
+      return apiUrl
+    }
+
+    // If API fails, try to scrape the ADS abstract page for PDF links
+    console.log(`API failed, attempting to scrape PDF links from ADS abstract page for ${bibcode}`)
+    return await scrapeADSPDFLinks(bibcode)
+  } catch (error) {
+    console.error('Enhanced ADS PDF URL resolution failed:', error)
+    return null
+  }
+}
+
+// Scrape PDF links from ADS abstract page
+async function scrapeADSPDFLinks(bibcode: string): Promise<string | null> {
+  try {
+    const abstractUrl = `https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`
+    console.log(`Scraping PDF links from: ${abstractUrl}`)
+    
+    // Use a server-side fetch to avoid CORS issues
+    const response = await fetch(abstractUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; AstroCompanion/1.0)'
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch abstract page: ${response.status}`)
+    }
+    
+    const html = await response.text()
+    
+    // Look for PDF links in the Full Text section
+    // ADS typically has links like:
+    // - Publisher PDF: https://iopscience.iop.org/article/10.3847/2041-8213/ace32c/pdf
+    // - Preprint PDF: https://arxiv.org/pdf/2306.11807
+    // - ADS Gateway links: /link_gateway/2023ApJ...951L..48B/PUB_PDF
+    
+    // First, try to find ADS gateway links (relative URLs that need to be converted to absolute)
+    const adsGatewayMatch = html.match(/href="(\/link_gateway\/[^"]*\/PUB_PDF)"/)
+    if (adsGatewayMatch) {
+      const relativeUrl = adsGatewayMatch[1]
+      const absoluteUrl = `https://ui.adsabs.harvard.edu${relativeUrl}`
+      console.log(`Found ADS gateway PDF link: ${absoluteUrl}`)
+      return absoluteUrl
+    }
+    
+    // Try to find publisher PDF first (usually more reliable)
+    const publisherPdfMatch = html.match(/href="([^"]*\.pdf[^"]*)"/g)
+    if (publisherPdfMatch) {
+      for (const match of publisherPdfMatch) {
+        const url = match.replace(/href="([^"]*)"/, '$1')
+        if (url.includes('.pdf') && !url.includes('adsabs.harvard.edu')) {
+          console.log(`Found publisher PDF: ${url}`)
+          return url
+        }
+      }
+    }
+    
+    // Try to find arXiv PDF (Preprint PDF)
+    const arxivPdfMatch = html.match(/href="(https:\/\/arxiv\.org\/pdf\/[^"]*)"/)
+    if (arxivPdfMatch) {
+      console.log(`Found arXiv PDF: ${arxivPdfMatch[1]}`)
+      return arxivPdfMatch[1]
+    }
+    
+    // Try to find any other PDF links
+    const anyPdfMatch = html.match(/href="(https:\/\/[^"]*\.pdf[^"]*)"/)
+    if (anyPdfMatch) {
+      console.log(`Found PDF: ${anyPdfMatch[1]}`)
+      return anyPdfMatch[1]
+    }
+    
+    console.log('No PDF links found in abstract page')
+    return null
+  } catch (error) {
+    console.error('Error scraping ADS PDF links:', error)
+    return null
   }
 }
 

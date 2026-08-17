@@ -52,52 +52,58 @@ export default function PDFViewer({ fileUrl, className = '' }: PDFViewerProps) {
   }
 
   return (
-    <div className={`space-y-4 ${className}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            disabled={pageNumber <= 1}
-            onClick={previousPage}
-            className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-gray-50"
-          >
-            Previous
-          </button>
-          <span className="text-sm">
-            Page {pageNumber || (numPages ? 1 : '--')} of {numPages || '--'}
-          </span>
-          <button
-            type="button"
-            disabled={numPages !== null && pageNumber >= numPages}
-            onClick={nextPage}
-            className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-gray-50"
-          >
-            Next
-          </button>
-        </div>
+    <div className={`pdf-document-container ${className}`}>
+      {/* Navigation Controls */}
+      <div className="flex items-center justify-center gap-4 mb-4 bg-white rounded-lg shadow-sm border border-slate-200 p-3">
+        <button
+          type="button"
+          disabled={pageNumber <= 1}
+          onClick={previousPage}
+          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors font-medium"
+        >
+          ← Previous
+        </button>
+        <span className="text-sm font-medium text-slate-600 bg-slate-50 px-3 py-1 rounded-lg">
+          Page {pageNumber || (numPages ? 1 : '--')} of {numPages || '--'}
+        </span>
+        <button
+          type="button"
+          disabled={numPages !== null && pageNumber >= numPages}
+          onClick={nextPage}
+          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors font-medium"
+        >
+          Next →
+        </button>
       </div>
 
-      <div className="border rounded overflow-auto max-h-96">
+      {/* PDF Content */}
+      <div className="pdf-viewer-container">
         {loading && (
-          <div className="flex items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2">Loading PDF...</span>
+          <div className="flex items-center justify-center p-12">
+            <div className="flex flex-col items-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="text-slate-600 font-medium">Loading PDF...</span>
+            </div>
           </div>
         )}
         
-        <Document
-          file={fileUrl}
-          onLoadSuccess={onDocumentLoadSuccess}
-          onLoadError={onDocumentLoadError}
-          loading={null}
-        >
-          <Page
-            pageNumber={pageNumber}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
-            scale={1.0}
-          />
-        </Document>
+        <div className="pdf-viewer-content">
+          <Document
+            file={fileUrl}
+            onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={onDocumentLoadError}
+            loading={null}
+          >
+            <div className="pdf-page-container">
+              <Page
+                pageNumber={pageNumber}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                scale={1.0}
+              />
+            </div>
+          </Document>
+        </div>
       </div>
     </div>
   )

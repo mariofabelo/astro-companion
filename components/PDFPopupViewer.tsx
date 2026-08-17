@@ -2,6 +2,16 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Paper } from '@/types/paper';
+import { useAnnotations } from '@/lib/useAnnotations';
+import { isArxivSource, resolvePaperUrls } from '@/lib/paper-utils';
+import AnnotationToolbar from './AnnotationToolbar';
+import PDFAnnotationOverlay from './PDFAnnotationOverlay';
+import IframeAnnotationOverlay from './IframeAnnotationOverlay';
+import { Document, Page, pdfjs } from 'react-pdf';
+// Removed client-side ADS PDF resolution - now using API endpoint
+
+// Set up PDF.js worker - use local worker file for better reliability
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
 interface PDFPopupViewerProps {
   paper: Paper;
@@ -16,18 +26,94 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
   const [scale, setScale] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string>('');
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [isArxivFallback, setIsArxivFallback] = useState(false);
+  const [arxivFallbackPaper, setArxivFallbackPaper] = useState<any>(null);
+  const [showAnnotations, setShowAnnotations] = useState(true);
+  const [pdfDocument, setPdfDocument] = useState<any>(null);
+  const [useIframe, setUseIframe] = useState(false);
+
+  // Annotation system
+  const {
+    tool,
+    annotations,
+    setTool,
+    addAnnotation,
+    updateAnnotation,
+    deleteAnnotation,
+    clearAllAnnotations,
+    getAnnotationsForPage
+  } = useAnnotations({ paperId: paper.id });
 
   // Set PDF URL for papers
   useEffect(() => {
-    if (paper.source === 'ads' && paper.id.startsWith('ads:')) {
-      // For ADS papers, use the abstract page which has PDF links
-      const bibcode = paper.id.replace('ads:', '');
-      setPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
-    } else {
-      // For non-ADS papers, use existing logic
-      setPdfUrl(paper.url_pdf || paper.url_html);
-    }
+    const setPdfUrlForPaper = async () => {
+      if (paper.source === 'ads') {
+        console.log('🎯 PDFPOPUP - PROCESSING ADS PAPER 🎯');
+        const bibcode = paper.id.replace('ads:', '');
+        console.log('📋 PDFPOPUP - EXTRACTED BIBCODE:', bibcode);
+        
+        // Validate bibcode format before making API call
+        const isValidBibcode = /^\d{4}[A-Za-z]+[.\d]*[A-Za-z]/.test(bibcode);
+        console.log('✅ PDFPOPUP - BIBCODE VALID:', isValidBibcode);
+        
+        if (!isValidBibcode) {
+          console.log(`❌ PDFPOPUP - Invalid bibcode format: ${bibcode} - using abstract page directly`);
+          setPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
+          return;
+        }
+        
+        try {
+          console.log('🌐 PDFPOPUP - MAKING API CALL FOR PDF URL 🌐');
+          console.log(`📞 PDFPOPUP - API URL: /api/ads/pdf-url?bibcode=${encodeURIComponent(bibcode)}`);
+          const response = await fetch(`/api/ads/pdf-url?bibcode=${encodeURIComponent(bibcode)}`);
+          console.log('📡 PDFPOPUP - API RESPONSE STATUS:', response.status);
+          console.log('✅ PDFPOPUP - API RESPONSE OK:', response.ok);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('📦 PDFPOPUP - API RESPONSE DATA:', data);
+            console.log('🎯 PDFPOPUP - DATA.SUCCESS:', data.success);
+            console.log('🔗 PDFPOPUP - DATA.PDFURL:', data.pdfUrl);
+            
+            if (data.success && data.pdfUrl) {
+              console.log('🎉 PDFPOPUP - SUCCESS! Using resolved PDF URL:', data.pdfUrl);
+              setPdfUrl(data.pdfUrl);
+              
+              // Check if this is an arXiv paper (now prioritized)
+              if (data.fallbackToArxiv && data.arxivPaper) {
+                console.log('📚 PDFPOPUP - Using arXiv PDF (prioritized):', data.arxivPaper.url_pdf);
+                console.log('📄 PDFPOPUP - arXiv paper title:', data.arxivPaper.title);
+                setIsArxivFallback(true);
+                setArxivFallbackPaper(data.arxivPaper);
+              } else {
+                console.log('📄 PDFPOPUP - Using ADS PDF (no arXiv available)');
+                setIsArxivFallback(false);
+                setArxivFallbackPaper(null);
+              }
+              return;
+            } else {
+              console.log('❌ PDFPOPUP - API FAILED TO RESOLVE PDF URL');
+              console.log('🔍 PDFPOPUP - ERROR:', data.error || 'Unknown error');
+            }
+          } else {
+            console.log('❌ PDFPOPUP - API RESPONSE NOT OK:', response.status, response.statusText);
+          }
+          console.log('🔄 PDFPOPUP - Falling back to abstract page');
+          // Fallback to abstract page if no PDF URL found
+          setPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
+        } catch (error) {
+          console.error('💥 PDFPOPUP - Error getting ADS PDF URL:', error);
+          // Fallback to abstract page
+          setPdfUrl(`https://ui.adsabs.harvard.edu/abs/${bibcode}/abstract`);
+        }
+      } else {
+        // For arXiv and other non-ADS papers, resolve URLs
+        const urls = resolvePaperUrls(paper);
+        setPdfUrl(urls.url_pdf || urls.url_html);
+      }
+    };
+
+    setPdfUrlForPaper();
   }, [paper.id, paper.source, paper.url_pdf, paper.url_html]);
 
   useEffect(() => {
@@ -35,8 +121,40 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
       setIsLoading(true);
       setError(null);
       setCurrentPage(1);
+      
+      // Check if URL is likely to have CORS issues and use iframe mode directly
+      const corsProblematicDomains = ['arxiv.org', 'ui.adsabs.harvard.edu'];
+      const hasCorsIssues = corsProblematicDomains.some(domain => pdfUrl.includes(domain));
+      
+      if (hasCorsIssues) {
+        console.log('Detected potential CORS issues, using iframe mode directly');
+        setUseIframe(true);
+        setIsLoading(false);
+      } else {
+        setUseIframe(false);
+      }
     }
   }, [pdfUrl]);
+
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setTotalPages(numPages);
+    setIsLoading(false);
+    setError(null);
+  };
+
+  const onDocumentLoadError = (error: Error) => {
+    console.error('PDF load error:', error);
+    console.error('PDF URL:', pdfUrl);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
+    console.log('Falling back to iframe mode');
+    setUseIframe(true);
+    setError(null);
+    setIsLoading(false);
+  };
 
   const handlePreviousPage = () => {
     if (currentPage > 1) {
@@ -67,6 +185,11 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
+    // Don't handle shortcuts if user is typing in an input/textarea
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+
     switch (e.key) {
       case 'ArrowLeft':
         handlePreviousPage();
@@ -94,6 +217,28 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
           handleFullscreen();
         }
         break;
+      // Annotation shortcuts
+      case 'h':
+      case 'H':
+        if (showAnnotations) {
+          e.preventDefault();
+          setTool({ type: 'highlight', color: tool.color || 'yellow' });
+        }
+        break;
+      case 'n':
+      case 'N':
+        if (showAnnotations) {
+          e.preventDefault();
+          setTool({ type: 'sticky-note' });
+        }
+        break;
+      case 't':
+      case 'T':
+        if (showAnnotations) {
+          e.preventDefault();
+          setTool({ type: 'text', alignment: tool.alignment || 'left' });
+        }
+        break;
     }
   };
 
@@ -102,18 +247,6 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [currentPage, totalPages, scale]);
 
-  const handleIframeLoad = () => {
-    setIsLoading(false);
-    // Try to get total pages from the PDF viewer
-    // This is a simplified approach - in a real implementation, you might need
-    // to use a PDF.js library to get accurate page counts
-    setTotalPages(10); // Default fallback
-  };
-
-  const handleIframeError = () => {
-    setIsLoading(false);
-    setError('Failed to load PDF. Please try opening it in a new tab.');
-  };
 
   return (
     <div className={`fixed inset-0 bg-black/80 backdrop-blur-none z-50 flex items-center justify-center ${
@@ -130,12 +263,20 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
             </h2>
             <div className="flex items-center gap-2">
               <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                paper.source === 'arXiv' 
+                isArxivSource(paper.source)
                   ? 'bg-orange-100 text-orange-700'
                   : 'bg-blue-100 text-blue-700'
               }`}>
-                {paper.source}
+                {isArxivSource(paper.source) ? 'arXiv' : paper.source}
               </span>
+              {isArxivFallback && (
+                <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  arXiv PDF
+                </span>
+              )}
               {paper.year && (
                 <span className="px-2 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
                   {paper.year}
@@ -145,6 +286,21 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
           </div>
           
           <div className="flex items-center gap-2">
+            {/* Annotation Toggle */}
+            <button
+              onClick={() => setShowAnnotations(!showAnnotations)}
+              className={`p-2 rounded-lg transition-colors ${
+                showAnnotations 
+                  ? 'bg-blue-100 text-blue-700' 
+                  : 'hover:bg-slate-100 text-slate-600'
+              }`}
+              title="Toggle annotations"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+            </button>
+
             {/* Page Navigation */}
             <div className="flex items-center gap-2">
               <button
@@ -235,8 +391,36 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
           </div>
         </div>
 
+        {/* Annotation Toolbar */}
+        {showAnnotations && (
+          <div className="p-3 border-b border-slate-200 bg-slate-50">
+            <div className="flex items-center justify-between">
+              <AnnotationToolbar
+                tool={tool}
+                onToolChange={setTool}
+                onClearAnnotations={clearAllAnnotations}
+                annotationCount={annotations.length}
+              />
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                  {tool.type === 'highlight' && 'Highlight Mode'}
+                  {tool.type === 'sticky-note' && 'Sticky Note Mode'}
+                  {tool.type === 'text' && 'Text Mode'}
+                </span>
+                <span className="text-slate-500">•</span>
+                <span>Click and drag to annotate</span>
+              </div>
+            </div>
+            {useIframe && (
+              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                <strong>Note:</strong> PDF loaded in iframe mode due to CORS restrictions. Highlighting is not available, but sticky notes and text annotations work.
+              </div>
+            )}
+          </div>
+        )}
+
         {/* PDF Content */}
-        <div className="flex-1 relative overflow-hidden">
+        <div className="flex-1 relative overflow-hidden bg-slate-50">
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-50">
               <div className="text-center">
@@ -264,20 +448,57 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
           )}
 
           {pdfUrl && (
-            <iframe
-              ref={iframeRef}
-              src={pdfUrl}
-              className="w-full h-full border-0"
-              style={{
-                transform: `scale(${scale})`,
-                transformOrigin: 'top left',
-                width: `${100 / scale}%`,
-                height: `${100 / scale}%`
-              }}
-              onLoad={handleIframeLoad}
-              onError={handleIframeError}
-              title={`PDF: ${paper.title}`}
-            />
+            useIframe ? (
+              <IframeAnnotationOverlay
+                pageNumber={currentPage}
+                tool={tool}
+                annotations={getAnnotationsForPage(currentPage)}
+                onAddAnnotation={addAnnotation}
+                onUpdateAnnotation={updateAnnotation}
+                onDeleteAnnotation={deleteAnnotation}
+                scale={scale}
+              >
+                <iframe
+                  src={pdfUrl}
+                  className="w-full h-full border-0"
+                  style={{
+                    transform: `scale(${scale})`,
+                    transformOrigin: 'top left',
+                    width: `${100 / scale}%`,
+                    height: `${100 / scale}%`
+                  }}
+                  title={`PDF: ${paper.title}`}
+                />
+              </IframeAnnotationOverlay>
+            ) : (
+              <PDFAnnotationOverlay
+                pageNumber={currentPage}
+                tool={tool}
+                annotations={getAnnotationsForPage(currentPage)}
+                onAddAnnotation={addAnnotation}
+                onUpdateAnnotation={updateAnnotation}
+                onDeleteAnnotation={deleteAnnotation}
+                scale={scale}
+              >
+                <div className="pdf-viewer-content w-full h-full overflow-auto">
+                  <Document
+                    file={pdfUrl}
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    onLoadError={onDocumentLoadError}
+                    loading={null}
+                  >
+                    <div className="pdf-page-container">
+                      <Page
+                        pageNumber={currentPage}
+                        renderTextLayer={true}
+                        renderAnnotationLayer={true}
+                        scale={scale}
+                      />
+                    </div>
+                  </Document>
+                </div>
+              </PDFAnnotationOverlay>
+            )
           )}
         </div>
 
@@ -288,6 +509,13 @@ export default function PDFPopupViewer({ paper, onClose }: PDFPopupViewerProps) 
             <span>+ - Zoom</span>
             <span>0 Reset zoom</span>
             <span>Ctrl+F Fullscreen</span>
+            {showAnnotations && (
+              <>
+                <span>H Highlight</span>
+                <span>N Sticky note</span>
+                <span>T Text</span>
+              </>
+            )}
             <span>Esc Close</span>
           </div>
         </div>

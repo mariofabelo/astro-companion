@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Paper } from '@/types/paper';
 import LaTeXText from './LaTeXText';
 import { downloadPaper } from '@/lib/download';
+import { isArxivSource, resolvePaperUrls } from '@/lib/paper-utils';
 
 interface PaperGridProps {
   papers: Paper[];
@@ -39,11 +40,13 @@ export default function PaperGrid({
   };
 
   const handleDownloadPaper = async (paper: Paper) => {
+    console.log('🔥 PAPERGRID - handleDownloadPaper called with paper:', paper);
     try {
       await downloadPaper(paper);
     } catch (error) {
       console.error('Failed to download paper:', error);
-      // You could add a toast notification here
+      // Show user-friendly error message
+      alert(`Failed to download paper: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -91,11 +94,11 @@ export default function PaperGrid({
                   </p>
                 </div>
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ml-3 flex-shrink-0 ${
-                  paper.source === 'arXiv' 
+                  isArxivSource(paper.source)
                     ? 'bg-orange-100 text-orange-700'
                     : 'bg-blue-100 text-blue-700'
                 }`}>
-                  {paper.source}
+                  {isArxivSource(paper.source) ? 'arXiv' : paper.source}
                 </span>
               </div>
               
@@ -141,7 +144,7 @@ export default function PaperGrid({
                   </button>
                 </div>
                 <div className="flex items-center gap-1">
-                  {paper.url_pdf && (
+                  {(resolvePaperUrls(paper).url_pdf || paper.source === 'ads') && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

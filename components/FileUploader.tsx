@@ -5,6 +5,7 @@ import { useDropzone } from 'react-dropzone';
 import PaperUploadPreview from './PaperUploadPreview';
 import { Paper } from '@/types/paper';
 import { ResearchSpace } from '@/lib/research-spaces';
+import { getArxivUrls, normalizePaper } from '@/lib/paper-utils';
 
 interface FileUploaderProps {
   onFilesUploaded?: (files: File[]) => void;
@@ -139,21 +140,28 @@ export default function FileUploader({
       console.log('Link processed successfully:', result);
       
       // Convert the result to a Paper object for preview
-      const paper: Paper = {
-        id: result.paperId,
-        source: validation.type as 'arXiv' | 'ads',
+      const arxivId = validation.type === 'arxiv'
+        ? (result.paper?.id || result.paperId)
+        : null;
+      const arxivUrls = arxivId ? getArxivUrls(arxivId) : null;
+
+      const paper = normalizePaper({
+        id: validation.type === 'arxiv'
+          ? `arxiv:${arxivId}`
+          : `ads:${result.paper?.id || result.paperId}`,
+        source: validation.type === 'arxiv' ? 'arXiv' : 'ads',
         title: result.paper?.title || 'Unknown Title',
         authors: result.paper?.authors || [],
         abstract: result.paper?.abstract || '',
         publishedDate: result.paper?.published || '',
-        journal: result.paper?.journal || '',
+        journal: result.paper?.journal || (validation.type === 'arxiv' ? 'arXiv' : ''),
         doi: result.paper?.doi || '',
-        arxivId: result.paper?.arxiv_id || '',
-        url_html: result.paper?.url_html || '',
-        url_pdf: result.hasPdf ? `${result.paperId}.pdf` : undefined,
+        arxivId: arxivId || result.paper?.arxiv_id || '',
+        url_html: arxivUrls?.url_html || result.paper?.url_html || '',
+        url_pdf: arxivUrls?.url_pdf || result.paper?.url_pdf,
         year: result.paper?.year,
         citations: result.paper?.citation_count
-      };
+      });
       
       // Show preview modal
       setProcessedPaper(paper);
