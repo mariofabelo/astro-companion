@@ -1,7 +1,7 @@
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
+import { getDocument, GlobalWorkerOptions, version } from "pdfjs-dist";
 
 // Set up PDF.js worker - use a reliable CDN
-GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@5.4.54/build/pdf.worker.min.js`;
+GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
 
 // Cache for rendered thumbnails
 const thumbnailCache = new Map<string, string>();
@@ -44,7 +44,7 @@ export async function renderFirstPageToCanvas(pdfUrl: string, canvas: HTMLCanvas
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    await page.render({ canvasContext: ctx, canvas, viewport }).promise;
     
     // Cache the result
     const dataUrl = canvas.toDataURL();
@@ -85,7 +85,7 @@ export async function renderPdfPage(pdfUrl: string, pageNum: number = 1, scale: 
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    await page.render({ canvasContext: ctx, canvas, viewport }).promise;
     return canvas;
   } catch (error) {
     console.error('Error rendering PDF page:', error);

@@ -899,7 +899,7 @@ export default function MainPage() {
               </div>
               
               <p className="text-slate-600 mb-6">
-                Choose how you'd like to add papers to your research:
+                Choose how you&apos;d like to add papers to your research:
               </p>
               
               <div className="space-y-3">

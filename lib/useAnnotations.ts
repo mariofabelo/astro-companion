@@ -58,7 +58,7 @@ export function useAnnotations({ paperId }: UseAnnotationsProps) {
     setState(prev => ({
       ...prev,
       annotations: prev.annotations.map(ann =>
-        ann.id === id ? { ...ann, ...updates } : ann
+        ann.id === id ? ({ ...ann, ...updates } as Annotation) : ann
       )
     }));
   }, []);

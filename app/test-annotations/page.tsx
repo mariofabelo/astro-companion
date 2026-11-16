@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import PDFPopupViewer from '@/components/PDFPopupViewer';
+import dynamic from 'next/dynamic';
+// pdf.js needs browser APIs (DOMMatrix), so never render the viewer on the server
+const PDFPopupViewer = dynamic(() => import('@/components/PDFPopupViewer'), { ssr: false });
 import AnnotationDebug from '@/components/AnnotationDebug';
 import { Paper } from '@/types/paper';
 
@@ -14,15 +16,11 @@ export default function TestAnnotationsPage() {
     title: 'Test PDF for Annotations',
     authors: ['Test Author'],
     abstract: 'This is a test paper to demonstrate the annotation system.',
-    year: '2024',
-    source: 'test',
+    year: 2024,
+    source: 'arXiv',
     url_pdf: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', // Sample PDF URL
     url_html: '',
-    doi: '',
-    arxiv_id: '',
-    bibcode: '',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    doi: ''
   };
 
   return (
@@ -47,7 +45,7 @@ export default function TestAnnotationsPage() {
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
           <h2 className="text-xl font-semibold text-slate-800 mb-4">How to Test</h2>
           <ol className="text-slate-600 space-y-2">
-            <li>1. Click "Open Test PDF with Annotations" above</li>
+            <li>1. Click &quot;Open Test PDF with Annotations&quot; above</li>
             <li>2. The PDF viewer will open with annotation tools enabled</li>
             <li>3. Click the annotation toggle button (📌) in the header if not already enabled</li>
             <li>4. Try the different annotation tools:</li>

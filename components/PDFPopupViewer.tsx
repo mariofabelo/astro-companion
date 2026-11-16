@@ -10,8 +10,8 @@ import IframeAnnotationOverlay from './IframeAnnotationOverlay';
 import { Document, Page, pdfjs } from 'react-pdf';
 // Removed client-side ADS PDF resolution - now using API endpoint
 
-// Set up PDF.js worker - use local worker file for better reliability
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+// Worker must match the exact pdf.js version bundled with react-pdf
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PDFPopupViewerProps {
   paper: Paper;
