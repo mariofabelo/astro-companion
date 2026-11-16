@@ -86,18 +86,19 @@ export default function PDFAnnotationOverlay({
     } else if (tool.type === 'sticky-note' || tool.type === 'text') {
       // Create sticky note or text annotation
       const pos = getRelativePosition(event);
-      const annotation: Annotation = {
+      const base = {
         id: `${tool.type}-${Date.now()}`,
-        type: tool.type,
         pageNumber,
         x: pos.x,
         y: pos.y,
         content: '',
         isEditing: true,
-        ...(tool.type === 'text' && { alignment: tool.alignment || 'left' }),
         createdAt: new Date(),
         updatedAt: new Date()
       };
+      const annotation: Annotation = tool.type === 'text'
+        ? { ...base, type: 'text', alignment: tool.alignment || 'left' }
+        : { ...base, type: 'sticky-note' };
       onAddAnnotation(annotation);
       setEditingAnnotation(annotation.id);
     }

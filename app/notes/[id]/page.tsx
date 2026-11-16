@@ -1,7 +1,9 @@
+'use client'
+
 import TipTapEditor from '@/components/TipTapEditor/Editor'
 import UniverseBackground from '@/components/UniverseBackground'
 
-export default function NotePage({ params }: { params: { id: string } }) {
+export default function NotePage() {
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Dynamic Universe Background */}

@@ -6,7 +6,9 @@ import { ResearchSpace } from '@/lib/research-spaces';
 import PaperCanvas from './PaperCanvas';
 import PaperGrid from './PaperGrid';
 import PaperIdentificationPanel from './PaperIdentificationPanel';
-import PDFPopupViewer from './PDFPopupViewer';
+import dynamic from 'next/dynamic';
+// pdf.js needs browser APIs (DOMMatrix), so never render the viewer on the server
+const PDFPopupViewer = dynamic(() => import('./PDFPopupViewer'), { ssr: false });
 
 interface ResearchSpaceViewProps {
   space: ResearchSpace;

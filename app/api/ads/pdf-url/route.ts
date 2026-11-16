@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchADSPaper } from '@/lib/ads';
+import { searchArXivForPaper, type ArxivMatch } from '@/lib/arxiv-fallback';
 
 // Get ADS API token from environment
 function getADSToken(): string | null {
@@ -155,30 +157,21 @@ async function scrapeADSPDFLinks(bibcode: string): Promise<string | null> {
 }
 
 // Enhanced function to get PDF URL with arXiv prioritization
-async function getADSPDFUrlEnhanced(bibcode: string): Promise<{ pdfUrl: string | null; fallbackToArxiv: boolean; arxivPaper?: any }> {
+async function getADSPDFUrlEnhanced(bibcode: string): Promise<{ pdfUrl: string | null; fallbackToArxiv: boolean; arxivPaper?: ArxivMatch }> {
   try {
     // ALWAYS try arXiv first - prioritize arXiv over ADS PDF
     console.log(`Prioritizing arXiv search for ${bibcode}`);
     try {
-      const arxivResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3002'}/api/ads/arxiv-fallback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ bibcode }),
-      });
-
-      if (arxivResponse.ok) {
-        const arxivData = await arxivResponse.json();
-        if (arxivData.success && arxivData.arxivPaper) {
-          console.log(`✅ Found arXiv paper for ${bibcode}: ${arxivData.arxivPaper.url_pdf}`);
-          console.log(`📄 arXiv title: ${arxivData.arxivPaper.title}`);
-          return { 
-            pdfUrl: arxivData.arxivPaper.url_pdf, 
-            fallbackToArxiv: true, 
-            arxivPaper: arxivData.arxivPaper 
-          };
-        }
+      const adsPaper = await fetchADSPaper(bibcode);
+      const arxivPaper = adsPaper ? await searchArXivForPaper(adsPaper) : null;
+      if (arxivPaper) {
+        console.log(`✅ Found arXiv paper for ${bibcode}: ${arxivPaper.url_pdf}`);
+        console.log(`📄 arXiv title: ${arxivPaper.title}`);
+        return {
+          pdfUrl: arxivPaper.url_pdf,
+          fallbackToArxiv: true,
+          arxivPaper
+        };
       }
     } catch (arxivError) {
       console.error('arXiv search failed:', arxivError);
